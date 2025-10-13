@@ -1,6 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
 const fs = std.fs;
+const posix = std.posix;
 
 const User = struct {
     id: u32,
@@ -14,6 +15,10 @@ const users = [_]User{
     .{ .id = 2, .name = "Bob Smith", .email = "bob@example.com", .joined = "2024-02-20" },
     .{ .id = 3, .name = "Charlie Brown", .email = "charlie@example.com", .joined = "2024-03-10" },
 };
+
+// Global server state
+var server_running = std.atomic.Value(bool).init(true);
+var server_fd_global: posix.fd_t = -1;
 
 // Global submission counter (in-memory, resets on restart)
 var submission_count: u32 = 0;
@@ -160,23 +165,56 @@ fn urlDecode(allocator: mem.Allocator, encoded: []const u8) ![]const u8 {
     return allocator.realloc(result, result_len);
 }
 
+fn handleSignal(sig: c_int) callconv(.C) void {
+    _ = sig;
+    std.debug.print("\n⚡ Shutting down gracefully...\n", .{});
+    server_running.store(false, .seq_cst);
+
+    // Close server socket to unblock accept()
+    if (server_fd_global >= 0) {
+        posix.close(server_fd_global);
+    }
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
+    // Install signal handlers
+    const act = posix.Sigaction{
+        .handler = .{ .handler = handleSignal },
+        .mask = posix.empty_sigset,
+        .flags = 0,
+    };
+    try posix.sigaction(posix.SIG.TERM, &act, null);
+    try posix.sigaction(posix.SIG.INT, &act, null);
+
     const address = try std.net.Address.parseIp("0.0.0.0", 8000);
     var server = try address.listen(.{});
     defer server.deinit();
 
+    // Store socket fd globally for signal handler
+    server_fd_global = server.stream.handle;
+
     std.debug.print("⚡ Zig server listening on http://0.0.0.0:8000\n", .{});
     std.debug.print("   Try form submissions at /submit!\n", .{});
 
-    while (true) {
-        const connection = try server.accept();
+    while (server_running.load(.seq_cst)) {
+        // Accept connection (will be unblocked by signal handler closing socket)
+        const connection = server.accept() catch |err| {
+            if (!server_running.load(.seq_cst)) {
+                // Server is shutting down
+                break;
+            }
+            // Actual error - propagate it
+            return err;
+        };
         const thread = try std.Thread.spawn(.{}, handleConnection, .{ allocator, connection });
         thread.detach();
     }
+
+    std.debug.print("⚡ Server stopped\n", .{});
 }
 
 fn handleConnection(allocator: mem.Allocator, connection: std.net.Server.Connection) void {
