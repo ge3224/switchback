@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Switchback Examples</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        line-height: 1.6;
+        color: #333;
+      }
+      nav {
+        background: #2c3e50;
+        color: white;
+        padding: 1rem 2rem;
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+      }
+      nav a {
+        color: white;
+        text-decoration: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+      nav a:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      nav a.active {
+        background: #3498db;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+      h1 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+      }
+      h2 {
+        color: #34495e;
+        margin: 1.5rem 0 1rem;
+      }
+      .flash {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        animation: slideDown 0.3s ease-out;
+      }
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .flash-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .flash-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .flash-info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      .flash button {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      }
+      .flash button:hover {
+        opacity: 1;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1.5rem 0;
+      }
+      .stat-card {
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        text-align: center;
+      }
+      .stat-card strong {
+        display: block;
+        font-size: 2rem;
+        color: #3498db;
+        margin-bottom: 0.5rem;
+      }
+      .user-list {
+        display: grid;
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      .user-card {
+        border: 1px solid #dee2e6;
+        padding: 1.5rem;
+        border-radius: 8px;
+        background: white;
+        transition: box-shadow 0.2s;
+      }
+      .user-card:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      .user-card h3 {
+        margin-bottom: 0.5rem;
+      }
+      .user-card h3 a {
+        color: #2c3e50;
+        text-decoration: none;
+      }
+      .user-card h3 a:hover {
+        color: #3498db;
+        text-decoration: underline;
+      }
+      .user-card p {
+        color: #6c757d;
+      }
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #495057;
+      }
+      input[type="text"],
+      input[type="email"] {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+      }
+      input[type="text"]:focus,
+      input[type="email"]:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      }
+      input.error {
+        border-color: #dc3545;
+      }
+      .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: block;
+      }
+      button {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #2980b9;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      .btn-danger {
+        background: #e74c3c;
+      }
+      .btn-danger:hover {
+        background: #c0392b;
+      }
+      .actions {
+        display: flex;
+        gap: 1rem;
+        margin: 1.5rem 0;
+      }
+      .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+      .form-actions a {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        color: #6c757d;
+        text-decoration: none;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+      .form-actions a:hover {
+        color: #495057;
+        border-color: #adb5bd;
+        background: #f8f9fa;
+      }
+      a.btn {
+        display: inline-block;
+        background: #3498db;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background 0.2s;
+      }
+      a.btn:hover {
+        background: #2980b9;
+      }
+      ul {
+        list-style-position: inside;
+        margin: 1rem 0;
+      }
+      li {
+        margin: 0.5rem 0;
+      }
+      code {
+        background: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-switchback-app>
+      <!-- App will be rendered here -->
+      <div style="padding: 2rem; text-align: center;">
+        <p>Loading Switchback app...</p>
+      </div>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
