@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "VITE_ROOT=examples vite",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
