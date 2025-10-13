@@ -30,7 +30,7 @@ Real-world integration examples with different server stacks:
 
 #### 📁 `recipes/php/` - Vanilla PHP
 
-A minimal PHP example with no framework dependencies.
+A minimal PHP example with no framework dependencies. Demonstrates **basic navigation** with link interception.
 
 ```bash
 # Option 1: PHP built-in server
@@ -48,9 +48,39 @@ Open http://localhost:8000
 - Simple routing with PHP's built-in server
 - Detecting `X-Switchback` header
 - Returning JSON vs HTML based on request type
-- Docker setup for easy deployment
+- Link navigation without page reloads
+- Visual indicators showing persistent vs dynamic content
 
 See [`recipes/php/README.md`](recipes/php/README.md) for details.
+
+#### ⚡ `recipes/zig/` - Zig HTTP Server
+
+A blazingly fast Zig example with zero external dependencies. Demonstrates **form handling** with POST requests.
+
+```bash
+# Option 1: Local (requires Zig 0.13+)
+cd recipes/zig
+pnpm install --dir ../../../
+pnpm build
+zig build-exe server.zig -O ReleaseFast
+./server
+
+# Option 2: Docker (recommended)
+cd recipes/zig
+docker-compose up
+```
+
+Open http://localhost:8000
+
+**What's demonstrated:**
+- Multi-threaded HTTP server using Zig stdlib
+- Form submission with POST method handling
+- Multipart form data parsing
+- Thread-safe submission counter
+- Dark terminal-inspired theme
+- Zero runtime dependencies
+
+See [`recipes/zig/README.md`](recipes/zig/README.md) for details.
 
 ## How It Works
 
