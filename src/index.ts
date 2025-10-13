@@ -54,47 +54,41 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
   let swapInProgress = false;
   const scrollPositions: Record<string, { x: number; y: number }> = {};
 
-  function visitWithFetch(
+  async function visitWithFetch(
     url: string,
     method: string,
     headers: Record<string, string>,
     options: VisitOptions
   ): Promise<void> {
-    return (async function visitWithFetchExecutor() {
-      try {
-        const isGetRequest = method === 'get';
-        const fetchUrl = isGetRequest && options.data
-          ? `${url}?${new URLSearchParams(options.data as Record<string, string>)}`
-          : url;
+    try {
+      const isGetRequest = method === 'get';
+      const fetchUrl = isGetRequest && options.data
+        ? `${url}?${new URLSearchParams(options.data as Record<string, string>)}`
+        : url;
 
-        const response = await fetch(fetchUrl, {
-          method: method.toUpperCase(),
-          headers,
-          body: !isGetRequest && options.data
-            ? options.data instanceof FormData
-              ? options.data
-              : JSON.stringify(options.data)
-            : undefined,
-        });
+      const response = await fetch(fetchUrl, {
+        method: method.toUpperCase(),
+        headers,
+        body: !isGetRequest && options.data
+          ? options.data instanceof FormData ? options.data : JSON.stringify(options.data)
+          : undefined,
+      });
 
-        if (!response.ok) {
-          const errors = await response.json().catch(function catchJsonError() {
-            return { message: 'Request failed' };
-          });
-          options.onError?.(errors);
-          options.onFinish?.();
-          return;
-        }
-
-        const page: Page = await response.json();
-        await swapPage(page, options);
-        options.onSuccess?.(page);
-      } catch (error) {
-        options.onError?.(error);
-      } finally {
+      if (!response.ok) {
+        const errors = await response.json().catch(() => ({ message: 'Request failed' }));
+        options.onError?.(errors);
         options.onFinish?.();
+        return;
       }
-    })();
+
+      const page: Page = await response.json();
+      await swapPage(page, options);
+      options.onSuccess?.(page);
+    } catch (error) {
+      options.onError?.(error);
+    } finally {
+      options.onFinish?.();
+    }
   }
 
   function visitWithXhr(
@@ -145,15 +139,11 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
 
   async function swapPage(page: Page, options: VisitOptions): Promise<void> {
     if (swapInProgress) return;
-
     swapInProgress = true;
 
     // Save scroll position before swap
     if (currentPage && !options.preserveScroll) {
-      scrollPositions[currentPage.url] = {
-        x: window.scrollX,
-        y: window.scrollY,
-      };
+      scrollPositions[currentPage.url] = { x: window.scrollX, y: window.scrollY };
     }
 
     // Merge props if partial reload
@@ -164,25 +154,17 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
     currentPage = mergedPage;
 
     // Update history
-    const historyMethod = options.replace ? 'replaceState' : 'pushState';
-    history[historyMethod]({ page: mergedPage }, '', mergedPage.url);
+    history[options.replace ? 'replaceState' : 'pushState']({ page: mergedPage }, '', mergedPage.url);
 
     // Resolve component and render
     const Component = await Promise.resolve(config.resolve(mergedPage.component));
     const el = document.querySelector('[data-swbk-app]');
-
-    if (el) {
-      config.setup({ el, App: Component, props: mergedPage.props });
-    }
+    if (el) config.setup({ el, App: Component, props: mergedPage.props });
 
     // Restore scroll position
     if (!options.preserveScroll) {
       const savedPosition = scrollPositions[mergedPage.url];
-      if (savedPosition) {
-        window.scrollTo(savedPosition.x, savedPosition.y);
-      } else {
-        window.scrollTo(0, 0);
-      }
+      window.scrollTo(savedPosition?.x ?? 0, savedPosition?.y ?? 0);
     }
 
     swapInProgress = false;
@@ -235,21 +217,18 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
     const headers = {
       'X-Switchback': 'true',
       'Accept': 'application/json',
-      ...(options.only ? { 'X-Switchback-Partial-Data': options.only.join(',') } : {}),
+      ...(options.only && { 'X-Switchback-Partial-Data': options.only.join(',') }),
       ...options.headers,
     };
 
     options.onStart?.();
-
-    if (options.useXhr && method === 'get' && options.onProgress) {
-      return visitWithXhr(url, headers, options);
-    }
-
-    return visitWithFetch(url, method, headers, options);
+    return options.useXhr && method === 'get' && options.onProgress
+      ? visitWithXhr(url, headers, options)
+      : visitWithFetch(url, method, headers, options);
   }
 
   function page(): Page | null {
-    return currentPage ? { ...currentPage, props: { ...currentPage.props } } : null;
+    return currentPage && { ...currentPage, props: { ...currentPage.props } };
   }
 
   function reload(options?: Omit<VisitOptions, 'method'>): Promise<void> {
@@ -258,29 +237,17 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
   }
 
   // Initialize
-  if (currentPage) {
-    history.replaceState({ page: currentPage }, '', currentPage.url);
-  }
+  if (currentPage) history.replaceState({ page: currentPage }, '', currentPage.url);
   setupInterceptors();
   setupHistoryListener();
 
-  // Return public API
-  return {
-    visit,
-    page,
-    reload,
-  };
+  return { visit, page, reload };
 }
 
 function shouldIntercept(link: HTMLAnchorElement): boolean {
-  return (
-    link.hasAttribute('data-swbk') &&
-    !!link.href &&
-    !link.target &&
-    !link.hasAttribute('download') &&
-    link.protocol === window.location.protocol &&
-    link.host === window.location.host
-  );
+  return link.hasAttribute('data-swbk') && !!link.href && !link.target &&
+    !link.hasAttribute('download') && link.protocol === window.location.protocol &&
+    link.host === window.location.host;
 }
 
 function shouldInterceptForm(form: HTMLFormElement): boolean {
