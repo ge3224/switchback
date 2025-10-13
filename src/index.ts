@@ -169,7 +169,7 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
 
     // Resolve component and render
     const Component = await Promise.resolve(config.resolve(mergedPage.component));
-    const el = document.querySelector('[data-switchback-app]');
+    const el = document.querySelector('[data-swbk-app]');
 
     if (el) {
       config.setup({ el, App: Component, props: mergedPage.props });
@@ -274,17 +274,17 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
 
 function shouldIntercept(link: HTMLAnchorElement): boolean {
   return (
+    link.hasAttribute('data-swbk') &&
     !!link.href &&
     !link.target &&
     !link.hasAttribute('download') &&
-    !link.hasAttribute('data-no-swizzle') &&
     link.protocol === window.location.protocol &&
     link.host === window.location.host
   );
 }
 
 function shouldInterceptForm(form: HTMLFormElement): boolean {
-  return !form.hasAttribute('data-no-swizzle');
+  return form.hasAttribute('data-swbk');
 }
 
 function tryParseJson(text: string): any {

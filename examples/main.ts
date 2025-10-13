@@ -141,9 +141,9 @@ function h(tag: string, props: any = {}, ...children: any[]): HTMLElement {
 
 function Layout(children: HTMLElement): HTMLElement {
   const nav = h('nav', {},
-    h('a', { href: '/', class: location.pathname === '/' ? 'active' : '' }, 'Home'),
-    h('a', { href: '/users', class: location.pathname.startsWith('/users') ? 'active' : '' }, 'Users'),
-    h('a', { href: '/about', class: location.pathname === '/about' ? 'active' : '' }, 'About'),
+    h('a', { href: '/', 'data-swbk': '', class: location.pathname === '/' ? 'active' : '' }, 'Home'),
+    h('a', { href: '/users', 'data-swbk': '', class: location.pathname.startsWith('/users') ? 'active' : '' }, 'Users'),
+    h('a', { href: '/about', 'data-swbk': '', class: location.pathname === '/about' ? 'active' : '' }, 'About'),
   );
 
   const main = h('main', {}, children);
@@ -185,7 +185,7 @@ function HomePage(props: any): HTMLElement {
         'Click around the app - notice how navigation is instant with no full page reloads!'
       ),
       h('div', { style: 'margin-top: 1rem;' },
-        h('a', { href: '/users', class: 'btn' }, 'View All Users')
+        h('a', { href: '/users', 'data-swbk': '', class: 'btn' }, 'View All Users')
       )
     )
   );
@@ -196,7 +196,7 @@ function UsersIndexPage(props: any): HTMLElement {
   const userCards = props.users.map((user: User) =>
     h('div', { class: 'user-card' },
       h('h3', {},
-        h('a', { href: `/users/${user.id}` }, user.name)
+        h('a', { href: `/users/${user.id}`, 'data-swbk': '' }, user.name)
       ),
       h('p', {}, user.email)
     )
@@ -207,7 +207,7 @@ function UsersIndexPage(props: any): HTMLElement {
       h('h1', {}, 'Users'),
       h('div', { class: 'user-list' }, ...userCards),
       h('div', { style: 'margin-top: 2rem;' },
-        h('a', { href: '/' }, '← Back to Home')
+        h('a', { href: '/', 'data-swbk': '' }, '← Back to Home')
       )
     )
   );
@@ -237,7 +237,7 @@ function UserShowPage(props: any): HTMLElement {
         }, 'Delete User')
       ),
       h('div', { style: 'margin-top: 2rem;' },
-        h('a', { href: '/users' }, '← Back to Users')
+        h('a', { href: '/users', 'data-swbk': '' }, '← Back to Users')
       )
     )
   );
@@ -267,7 +267,7 @@ function AboutPage(props: any): HTMLElement {
         ' header and return JSON instead of HTML.'
       ),
       h('div', { style: 'margin-top: 2rem;' },
-        h('a', { href: '/' }, '← Back to Home')
+        h('a', { href: '/', 'data-swbk': '' }, '← Back to Home')
       )
     )
   );

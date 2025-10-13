@@ -17,7 +17,7 @@ beforeEach(() => {
 
 describe("Switchback", () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     // Reset history
     history.replaceState(null, '', '/');
   });
@@ -25,7 +25,7 @@ describe("Switchback", () => {
   it("should initialize without errors", () => {
     const config: SwitchbackConfig = {
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     };
 
     expect(() => newSwitchback(config)).not.toThrow();
@@ -40,7 +40,7 @@ describe("Switchback", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -56,7 +56,7 @@ describe("Switchback", () => {
 
     newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -86,7 +86,7 @@ describe("visit", () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     history.replaceState(null, '', '/');
 
     // Mock fetch
@@ -113,7 +113,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test');
@@ -144,7 +144,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test', { method: 'post' });
@@ -171,7 +171,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const formData = new FormData();
@@ -202,7 +202,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const data = { name: 'John', age: 30 };
@@ -232,7 +232,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test', { data: { foo: 'bar', baz: 'qux' } });
@@ -259,7 +259,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const onStart = vi.fn();
@@ -282,7 +282,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const onSuccess = vi.fn();
@@ -296,7 +296,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const onError = vi.fn();
@@ -313,7 +313,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const onError = vi.fn();
@@ -336,7 +336,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const onFinish = vi.fn();
@@ -350,7 +350,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const onFinish = vi.fn();
@@ -373,7 +373,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test', {
@@ -404,7 +404,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test', { only: ['user', 'posts'] });
@@ -433,7 +433,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/new');
@@ -455,7 +455,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test');
@@ -480,7 +480,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: (name) => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test', { replace: true });
@@ -508,7 +508,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve,
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test');
@@ -539,7 +539,7 @@ describe("visit", () => {
     await app.visit('/test');
 
     expect(setup).toHaveBeenCalledWith({
-      el: document.querySelector('[data-switchback-app]'),
+      el: document.querySelector('[data-swbk-app]'),
       App: mockComponent,
       props: { value: 123 },
     });
@@ -565,7 +565,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -597,7 +597,7 @@ describe("visit", () => {
 
     const app = newSwitchback({
       resolve: asyncResolve,
-      setup: () => {},
+      setup: () => { },
     });
 
     await app.visit('/test');
@@ -608,14 +608,14 @@ describe("visit", () => {
 
 describe("page", () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     history.replaceState(null, '', '/');
   });
 
   it("should return null when no page is set", () => {
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     expect(app.page()).toBeNull();
@@ -630,7 +630,7 @@ describe("page", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -646,7 +646,7 @@ describe("page", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -662,7 +662,7 @@ describe("reload", () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     history.replaceState(null, '', '/');
 
     originalFetch = global.fetch;
@@ -698,7 +698,7 @@ describe("reload", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -730,7 +730,7 @@ describe("reload", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -760,7 +760,7 @@ describe("reload", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
       initialPage,
     });
 
@@ -787,7 +787,7 @@ describe("link interception", () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     history.replaceState(null, '', '/');
 
     originalFetch = global.fetch;
@@ -799,7 +799,7 @@ describe("link interception", () => {
     global.fetch = originalFetch;
   });
 
-  it("should intercept same-origin link clicks", async () => {
+  it("should intercept same-origin link clicks with data-swbk", async () => {
     const mockPage: Page = {
       component: 'Test',
       props: {},
@@ -813,11 +813,12 @@ describe("link interception", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const link = document.createElement('a');
     link.href = window.location.origin + '/test';
+    link.setAttribute('data-swbk', '');
     document.body.appendChild(link);
 
     const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
@@ -846,7 +847,7 @@ describe("link interception", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const link = document.createElement('a');
@@ -865,7 +866,7 @@ describe("link interception", () => {
   it("should NOT intercept links with download attribute", () => {
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const link = document.createElement('a');
@@ -884,7 +885,7 @@ describe("link interception", () => {
   it("should NOT intercept links with data-no-swizzle attribute", () => {
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const link = document.createElement('a');
@@ -903,7 +904,7 @@ describe("link interception", () => {
   it("should NOT intercept external links", () => {
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const link = document.createElement('a');
@@ -934,11 +935,12 @@ describe("link interception", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const link = document.createElement('a');
     link.href = window.location.origin + '/test';
+    link.setAttribute('data-swbk', '');
     link.setAttribute('data-replace', '');
     document.body.appendChild(link);
 
@@ -956,7 +958,7 @@ describe("form interception", () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     history.replaceState(null, '', '/');
 
     originalFetch = global.fetch;
@@ -982,12 +984,13 @@ describe("form interception", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const form = document.createElement('form');
     form.action = '/submit';
     form.method = 'post';
+    form.setAttribute('data-swbk', '');
     document.body.appendChild(form);
 
     const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
@@ -1004,7 +1007,7 @@ describe("form interception", () => {
   it("should NOT intercept forms with data-no-swizzle", () => {
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const form = document.createElement('form');
@@ -1034,12 +1037,13 @@ describe("form interception", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const form = document.createElement('form');
     form.action = '/submit';
     form.method = 'put';
+    form.setAttribute('data-swbk', '');
     document.body.appendChild(form);
 
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -1068,12 +1072,13 @@ describe("form interception", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     const form = document.createElement('form');
     form.action = '/submit';
     form.method = 'post';
+    form.setAttribute('data-swbk', '');
 
     const input = document.createElement('input');
     input.name = 'username';
@@ -1105,7 +1110,7 @@ describe("scroll management", () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     history.replaceState(null, '', '/');
 
     originalFetch = global.fetch;
@@ -1131,7 +1136,7 @@ describe("scroll management", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     Object.defineProperty(window, 'scrollY', { value: 500, writable: true, configurable: true });
@@ -1155,7 +1160,7 @@ describe("scroll management", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     Object.defineProperty(window, 'scrollY', { value: 500, writable: true, configurable: true });
@@ -1171,7 +1176,7 @@ describe("history navigation", () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    document.body.innerHTML = '<div data-switchback-app></div>';
+    document.body.innerHTML = '<div data-swbk-app></div>';
     history.replaceState(null, '', '/');
 
     originalFetch = global.fetch;
@@ -1192,7 +1197,7 @@ describe("history navigation", () => {
 
     const app = newSwitchback({
       resolve: () => () => document.createElement('div'),
-      setup: () => {},
+      setup: () => { },
     });
 
     // Simulate popstate with stored page
