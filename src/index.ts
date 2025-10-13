@@ -237,9 +237,17 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
   }
 
   // Initialize
-  if (currentPage) history.replaceState({ page: currentPage }, '', currentPage.url);
   setupInterceptors();
   setupHistoryListener();
+
+  // Render initial page if provided
+  if (currentPage) {
+    history.replaceState({ page: currentPage }, '', currentPage.url);
+    Promise.resolve(config.resolve(currentPage.component)).then(Component => {
+      const el = document.querySelector('[data-swbk-app]');
+      if (el) config.setup({ el, App: Component, props: currentPage!.props });
+    });
+  }
 
   return { visit, page, reload };
 }
