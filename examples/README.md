@@ -1,6 +1,6 @@
 # Switchback Examples
 
-Interactive examples demonstrating Switchback's SPA navigation features.
+Interactive examples demonstrating Switchback's single-page app features.
 
 ## Running Examples
 

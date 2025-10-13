@@ -1,7 +1,7 @@
 {
   "name": "switchback",
   "version": "0.1.0",
-  "description": "SPA navigation for vanilla TypeScript using traditional server-side patterns - zero dependencies, vendorable, auditable",
+  "description": "Single-page apps with your preferred server stack - zero dependencies, vendorable, auditable",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

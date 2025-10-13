@@ -1,7 +1,7 @@
 /**
- * Switchback - SPA navigation for vanilla TypeScript
+ * Switchback - Single-page apps with your preferred server stack
  *
- * Zero-dependency library for building SPAs with traditional backend patterns.
+ * Zero-dependency library for building SPAs with your preferred backend.
  * Works seamlessly with just-jsx for rendering and simple-state for shared data.
  */
 

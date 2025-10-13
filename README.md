@@ -1,6 +1,6 @@
 # Switchback
 
-SPA navigation for vanilla TypeScript using traditional server-side patterns. Build single-page apps without the complexity of modern frameworks.
+Build single-page apps with your preferred server stack. Zero dependencies, vendorable, and auditable.
 
 **Zero dependencies. Vendorable. Auditable. ~300 lines.**
 
@@ -44,7 +44,7 @@ npm install switchback
 Works beautifully with [just-jsx](https://github.com/yourusername/just-jsx) and [simple-state](https://github.com/yourusername/simple-state):
 
 ```typescript
-import { createSwitchbackApp } from './vendor/switchback/src/index.ts';
+import { newSwitchback } from './vendor/switchback/src/index.ts';
 import { createDomElement } from './vendor/just-jsx/src/index.ts';
 
 // Your page components
@@ -54,7 +54,7 @@ const pages = {
 };
 
 // Initialize Switchback
-createSwitchbackApp({
+const app = newSwitchback({
   // Resolve component by name
   resolve: (name: string) => pages[name],
 
@@ -82,7 +82,7 @@ createSwitchbackApp({
   </script>
 </head>
 <body>
-  <div data-switchback-app></div>
+  <div data-swbk-app></div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
@@ -165,12 +165,12 @@ const ExternalLink = () => (
 
 ## API
 
-### `createSwitchbackApp(config)`
+### `newSwitchback(config)`
 
 Initialize the Switchback app.
 
 ```typescript
-createSwitchbackApp({
+const app = newSwitchback({
   resolve: (name: string) => Promise<Component> | Component,
   setup: ({ el, App, props }) => void,
   initialPage?: Page,
@@ -269,7 +269,7 @@ import { newSimpleState } from './vendor/simple-state/src/index.ts';
 
 const flashState = newSimpleState({ message: null });
 
-createSwitchbackApp({
+const app = newSwitchback({
   resolve: (name) => pages[name],
   setup: ({ el, App, props }) => {
     // Update shared state on page load
@@ -287,7 +287,7 @@ createSwitchbackApp({
 
 - **Simple**: No complex client-side routing or state management required
 - **Familiar**: Use server-side patterns you already know
-- **Fast**: SPA navigation without full page reloads
+- **Fast**: Page transitions without full page reloads
 - **Auditable**: ~200 lines of readable TypeScript
 - **Zero deps**: No external dependencies to audit
 - **Vendorable**: Easy to vendor via git submodules

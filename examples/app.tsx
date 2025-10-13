@@ -8,7 +8,7 @@
  * - Progress indicators
  */
 
-import { createSwitchbackApp, visit, page, reload } from '../src/index';
+import { newSwitchback, visit, page, reload } from '../src/index';
 import { createDomElement as h } from '../../just-jsx/main/src/index';
 import { newSimpleState } from '../../simple-state/main/src/index';
 
@@ -173,7 +173,7 @@ const pages: Record<string, (props: any) => any> = {
 // App Initialization
 // ============================================================================
 
-createSwitchbackApp({
+const app = newSwitchback({
   resolve: (name: string) => {
     const component = pages[name];
     if (!component) {
