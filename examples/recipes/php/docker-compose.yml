@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  php:
+    container_name: switchback_php
+    build:
+      context: ../../..
+      dockerfile: examples/recipes/php/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./index.php:/app/index.php
+      # Note: dist/ is NOT mounted - it's baked into the image
+      # For development with hot reload, build locally and uncomment:
+      # - ./dist:/app/dist:ro
+    environment:
+      - PHP_CLI_SERVER_WORKERS=4
