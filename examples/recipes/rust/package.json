@@ -1,0 +1,17 @@
+{
+  "name": "switchback-rust-recipe",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm build:wasm && vite build",
+    "build:js": "vite build",
+    "build:wasm": "wasm-pack build --target web --out-dir pkg",
+    "dev": "vite build --watch",
+    "serve": "cargo run --release"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  }
+}

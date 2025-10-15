@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  rust:
+    container_name: switchback_rust
+    build:
+      context: ../../..
+      dockerfile: examples/recipes/rust/Dockerfile
+    ports:
+      - "8000:8000"
+    # Note: dist/ is NOT mounted - it's baked into the image
+    # For development with hot reload, build locally and uncomment:
+    # volumes:
+    #   - ./dist:/app/dist:ro
