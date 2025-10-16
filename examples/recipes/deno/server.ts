@@ -1,338 +1,348 @@
 #!/usr/bin/env -S deno run --allow-net --allow-read
 
 /**
- * Deno + Switchback Recipe - Real-Time Dashboard with Server-Sent Events
+ * Deno + Switchback Recipe Manager - Type-Safe Server
  *
- * This server demonstrates:
- * - Server-Sent Events (SSE) for real-time push updates
- * - Live metrics streaming (CPU, memory, active connections)
- * - Activity log with live updates
- * - Deno's built-in TypeScript and modern APIs
+ * This server demonstrates full TypeScript type safety from server to client.
+ * Notice how we import shared-types.ts - the SAME types used by the client!
+ *
+ * No build step needed. Deno runs TypeScript natively. 🦕
  */
+
+import type {
+  Recipe,
+  RecipeBookPageProps,
+  RecipeDetailPageProps,
+  RecipeSearchPageProps,
+  AddRecipePageProps,
+} from './shared-types.ts';
 
 const PORT = 8000;
 
-// Types
-interface Activity {
-  id: number;
-  timestamp: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  message: string;
-  details?: string;
-}
-
-interface Metrics {
-  timestamp: string;
-  cpu: number;
-  memory: number;
-  activeConnections: number;
-  totalRequests: number;
-  uptime: number;
-}
-
-// Global state
-let activityLog: Activity[] = [];
-let activityIdCounter = 1;
-let metricsClients: Set<ReadableStreamDefaultController> = new Set();
-let activityClients: Set<ReadableStreamDefaultController> = new Set();
-let totalRequests = 0;
-let activeConnections = 0;
-const startTime = Date.now();
-
-// Initialize with some sample activities
-activityLog = [
+// Sample recipe database (in-memory for demo)
+// In production, this would be from Deno KV or a database
+const recipes: Recipe[] = [
   {
-    id: activityIdCounter++,
-    timestamp: new Date().toISOString(),
-    type: 'success',
-    message: 'Server started',
-    details: 'Deno server initialized on port 8000'
+    id: '1',
+    title: 'Classic Margherita Pizza',
+    description: 'Simple and delicious Italian pizza with fresh mozzarella, tomatoes, and basil.',
+    author: 'Chef Mario',
+    prepTime: 20,
+    cookTime: 15,
+    servings: 4,
+    difficulty: 'medium',
+    ingredients: [
+      { name: 'pizza dough', amount: 1, unit: 'whole' },
+      { name: 'san marzano tomatoes', amount: 1, unit: 'cup' },
+      { name: 'fresh mozzarella', amount: 8, unit: 'oz' },
+      { name: 'fresh basil leaves', amount: 10, unit: 'whole' },
+      { name: 'olive oil', amount: 2, unit: 'tbsp' },
+      { name: 'salt', amount: 1, unit: 'tsp' },
+    ],
+    steps: [
+      'Preheat oven to 500°F (260°C) with pizza stone inside',
+      'Roll out pizza dough on a floured surface',
+      'Spread tomato sauce evenly, leaving a 1-inch border',
+      'Tear mozzarella into pieces and distribute over sauce',
+      'Drizzle with olive oil and sprinkle with salt',
+      'Bake for 12-15 minutes until crust is golden and cheese is bubbly',
+      'Top with fresh basil leaves and serve immediately',
+    ],
+    tags: ['italian', 'pizza', 'vegetarian', 'comfort-food'],
+    nutrition: {
+      calories: 285,
+      protein: 12,
+      carbs: 35,
+      fat: 10,
+    },
+    imageUrl: 'https://images.unsplash.com/photo-1604068549290-dea0e4a305ca',
+    createdAt: new Date('2024-01-15'),
   },
   {
-    id: activityIdCounter++,
-    timestamp: new Date().toISOString(),
-    type: 'info',
-    message: 'Switchback integration ready',
-    details: 'SPA routing and SSE endpoints configured'
-  }
+    id: '2',
+    title: 'Chocolate Chip Cookies',
+    description: 'Chewy, gooey chocolate chip cookies that are impossible to resist.',
+    author: 'Baker Betty',
+    prepTime: 15,
+    cookTime: 12,
+    servings: 24,
+    difficulty: 'easy',
+    ingredients: [
+      { name: 'all-purpose flour', amount: 2.25, unit: 'cup' },
+      { name: 'butter', amount: 1, unit: 'cup' },
+      { name: 'granulated sugar', amount: 0.75, unit: 'cup' },
+      { name: 'brown sugar', amount: 0.75, unit: 'cup' },
+      { name: 'eggs', amount: 2, unit: 'whole' },
+      { name: 'vanilla extract', amount: 2, unit: 'tsp' },
+      { name: 'baking soda', amount: 1, unit: 'tsp' },
+      { name: 'salt', amount: 1, unit: 'tsp' },
+      { name: 'chocolate chips', amount: 2, unit: 'cup' },
+    ],
+    steps: [
+      'Preheat oven to 375°F (190°C)',
+      'Cream together butter and sugars until fluffy',
+      'Beat in eggs and vanilla extract',
+      'In a separate bowl, combine flour, baking soda, and salt',
+      'Gradually blend dry ingredients into creamed mixture',
+      'Stir in chocolate chips',
+      'Drop rounded tablespoons onto ungreased cookie sheets',
+      'Bake for 9-11 minutes or until golden brown',
+      'Cool on baking sheet for 2 minutes, then transfer to wire rack',
+    ],
+    tags: ['dessert', 'cookies', 'chocolate', 'baking'],
+    nutrition: {
+      calories: 180,
+      protein: 2,
+      carbs: 24,
+      fat: 9,
+    },
+    imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e',
+    createdAt: new Date('2024-01-10'),
+  },
+  {
+    id: '3',
+    title: 'Thai Green Curry',
+    description: 'Aromatic and spicy Thai curry with vegetables and coconut milk.',
+    author: 'Chef Somchai',
+    prepTime: 25,
+    cookTime: 30,
+    servings: 4,
+    difficulty: 'hard',
+    ingredients: [
+      { name: 'green curry paste', amount: 3, unit: 'tbsp' },
+      { name: 'coconut milk', amount: 2, unit: 'cup' },
+      { name: 'chicken breast', amount: 1, unit: 'lb' },
+      { name: 'bamboo shoots', amount: 1, unit: 'cup' },
+      { name: 'thai basil', amount: 0.5, unit: 'cup' },
+      { name: 'fish sauce', amount: 2, unit: 'tbsp' },
+      { name: 'palm sugar', amount: 1, unit: 'tbsp' },
+      { name: 'kaffir lime leaves', amount: 4, unit: 'whole' },
+      { name: 'vegetable oil', amount: 2, unit: 'tbsp' },
+    ],
+    steps: [
+      'Heat oil in a wok over medium-high heat',
+      'Add green curry paste and fry for 2 minutes until fragrant',
+      'Pour in half of the coconut milk and stir well',
+      'Add chicken and cook until it changes color',
+      'Add remaining coconut milk, bamboo shoots, and lime leaves',
+      'Simmer for 15 minutes until chicken is cooked through',
+      'Season with fish sauce and palm sugar',
+      'Stir in thai basil just before serving',
+      'Serve hot with jasmine rice',
+    ],
+    tags: ['thai', 'curry', 'spicy', 'asian'],
+    nutrition: {
+      calories: 420,
+      protein: 28,
+      carbs: 12,
+      fat: 30,
+    },
+    imageUrl: 'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd',
+    createdAt: new Date('2024-01-20'),
+  },
+  {
+    id: '4',
+    title: 'Caesar Salad',
+    description: 'Classic Roman salad with crispy romaine, parmesan, and creamy dressing.',
+    author: 'Chef Giovanni',
+    prepTime: 15,
+    cookTime: 10,
+    servings: 4,
+    difficulty: 'easy',
+    ingredients: [
+      { name: 'romaine lettuce', amount: 2, unit: 'whole' },
+      { name: 'parmesan cheese', amount: 0.5, unit: 'cup' },
+      { name: 'croutons', amount: 1, unit: 'cup' },
+      { name: 'mayonnaise', amount: 0.5, unit: 'cup' },
+      { name: 'garlic cloves', amount: 2, unit: 'whole' },
+      { name: 'lemon juice', amount: 2, unit: 'tbsp' },
+      { name: 'worcestershire sauce', amount: 1, unit: 'tsp' },
+      { name: 'dijon mustard', amount: 1, unit: 'tsp' },
+      { name: 'anchovy fillets', amount: 3, unit: 'whole' },
+    ],
+    steps: [
+      'Wash and dry romaine lettuce, then tear into bite-sized pieces',
+      'Make dressing: blend garlic, anchovies, lemon juice, mustard, and worcestershire',
+      'Add mayonnaise and blend until smooth',
+      'Toss lettuce with dressing in a large bowl',
+      'Add croutons and toss again',
+      'Top with shaved parmesan cheese',
+      'Serve immediately',
+    ],
+    tags: ['salad', 'vegetarian', 'side-dish', 'italian'],
+    nutrition: {
+      calories: 210,
+      protein: 8,
+      carbs: 12,
+      fat: 15,
+    },
+    imageUrl: 'https://images.unsplash.com/photo-1546793665-c74683f339c1',
+    createdAt: new Date('2024-01-12'),
+  },
 ];
 
-// Utility functions
-function addActivity(type: Activity['type'], message: string, details?: string) {
-  const activity: Activity = {
-    id: activityIdCounter++,
-    timestamp: new Date().toISOString(),
-    type,
-    message,
-    details
-  };
-
-  activityLog.unshift(activity);
-  if (activityLog.length > 100) {
-    activityLog = activityLog.slice(0, 100);
-  }
-
-  // Broadcast to all activity SSE clients
-  broadcastActivity(activity);
+// Helper function to get all unique tags
+function getAllTags(): string[] {
+  const tagsSet = new Set<string>();
+  recipes.forEach(recipe => recipe.tags.forEach(tag => tagsSet.add(tag)));
+  return Array.from(tagsSet).sort();
 }
 
-function broadcastActivity(activity: Activity) {
-  const data = `data: ${JSON.stringify(activity)}\n\n`;
-
-  activityClients.forEach(controller => {
-    try {
-      controller.enqueue(new TextEncoder().encode(data));
-    } catch (e) {
-      // Client disconnected, will be cleaned up
-      activityClients.delete(controller);
-    }
-  });
-}
-
-function broadcastMetrics(metrics: Metrics) {
-  const data = `data: ${JSON.stringify(metrics)}\n\n`;
-
-  metricsClients.forEach(controller => {
-    try {
-      controller.enqueue(new TextEncoder().encode(data));
-    } catch (e) {
-      // Client disconnected, will be cleaned up
-      metricsClients.delete(controller);
-    }
-  });
-}
-
-// Track CPU usage
-let lastCpuUsage = 0;
-let lastCpuTime = Date.now();
-
-function generateMetrics(): Metrics {
-  const now = Date.now();
-  const uptime = Math.floor((now - startTime) / 1000);
-
-  // Get real memory usage from Deno
-  const memUsage = Deno.memoryUsage();
-  const rss = memUsage.rss; // Resident Set Size (physical memory)
-  const heapUsed = memUsage.heapUsed;
-  const heapTotal = memUsage.heapTotal;
-
-  // Calculate memory percentage (based on heap usage)
-  const memoryPercent = (heapUsed / heapTotal) * 100;
-
-  // Estimate CPU usage (Deno doesn't have direct CPU metrics, so we approximate)
-  // This is a rough estimate based on event loop lag
-  const currentTime = Date.now();
-  const timeDelta = currentTime - lastCpuTime;
-
-  // Simple heuristic: more clients and requests = higher CPU
-  const activityFactor = (metricsClients.size + activityClients.size) * 5;
-  const requestFactor = Math.min((totalRequests / (uptime || 1)) * 2, 30);
-
-  // Smooth CPU usage changes
-  const targetCpu = Math.min(activityFactor + requestFactor + 5, 95);
-  lastCpuUsage = lastCpuUsage * 0.7 + targetCpu * 0.3; // Exponential smoothing
-  lastCpuTime = currentTime;
-
-  return {
-    timestamp: new Date().toISOString(),
-    cpu: Math.round(lastCpuUsage * 10) / 10, // Round to 1 decimal
-    memory: Math.round(memoryPercent * 10) / 10, // Round to 1 decimal
-    activeConnections,
-    totalRequests,
-    uptime
-  };
-}
-
-// Start metrics broadcast loop
-setInterval(() => {
-  if (metricsClients.size > 0) {
-    const metrics = generateMetrics();
-    broadcastMetrics(metrics);
-  }
-}, 1000); // Send metrics every second
-
-// Simulate random activity
-setInterval(() => {
-  if (Math.random() < 0.3) { // 30% chance every 3 seconds
-    const activities = [
-      { type: 'info' as const, message: 'User session started', details: `Session ID: ${Math.random().toString(36).substr(2, 9)}` },
-      { type: 'success' as const, message: 'API request completed', details: `Response time: ${Math.floor(Math.random() * 200 + 50)}ms` },
-      { type: 'info' as const, message: 'Cache refreshed', details: 'Memory cache updated with latest data' },
-      { type: 'warning' as const, message: 'High memory usage detected', details: `Memory usage: ${Math.floor(Math.random() * 20 + 70)}%` },
-      { type: 'success' as const, message: 'Database query optimized', details: 'Query execution time reduced by 40%' },
-      { type: 'info' as const, message: 'New SSE client connected', details: 'Real-time stream established' },
-    ];
-
-    const activity = activities[Math.floor(Math.random() * activities.length)];
-    addActivity(activity.type, activity.message, activity.details);
-  }
-}, 3000);
-
-// Helper to create SSE response
-function createSSEStream(clientSet: Set<ReadableStreamDefaultController>) {
-  let controller: ReadableStreamDefaultController;
-
-  const stream = new ReadableStream({
-    start(ctrl) {
-      controller = ctrl;
-      clientSet.add(controller);
-      activeConnections++; // Count SSE as active connection
-
-      // Send initial heartbeat
-      controller.enqueue(new TextEncoder().encode(': heartbeat\n\n'));
-    },
-    cancel() {
-      clientSet.delete(controller);
-      activeConnections--; // Decrement when SSE closes
-    }
-  });
-
-  return stream;
-}
-
-// Route handlers
-function handlePageRoute(url: URL): { component: string; props: any; url: string } {
+// Route handler - Returns fully typed page data
+function handlePageRoute(url: URL): {
+  component: string;
+  props: RecipeBookPageProps | RecipeDetailPageProps | RecipeSearchPageProps | AddRecipePageProps;
+  url: string;
+} {
   const path = url.pathname;
 
-  if (path === '/' || path === '/dashboard') {
-    return {
-      component: 'Dashboard',
-      props: {
-        initialActivities: activityLog.slice(0, 10),
-        initialMetrics: generateMetrics()
-      },
-      url: '/'
+  // Home page - Recipe book with all recipes
+  if (path === '/' || path === '/recipes') {
+    const props: RecipeBookPageProps = {
+      recipes: recipes.slice().sort((a, b) =>
+        b.createdAt.getTime() - a.createdAt.getTime()
+      ),
+      featuredRecipe: recipes[0], // Most recent
+      popularTags: getAllTags().slice(0, 8),
     };
-  } else if (path === '/activity') {
+
     return {
-      component: 'ActivityPage',
-      props: {
-        activities: activityLog
-      },
-      url: '/activity'
-    };
-  } else {
-    return {
-      component: 'NotFound',
-      props: { path },
-      url: path
+      component: 'RecipeBookPage',
+      props,
+      url: '/',
     };
   }
+
+  // Recipe detail page
+  const recipeMatch = path.match(/^\/recipe\/([^/]+)$/);
+  if (recipeMatch) {
+    const recipeId = recipeMatch[1];
+    const recipe = recipes.find(r => r.id === recipeId);
+
+    if (recipe) {
+      // Find related recipes (same tags)
+      const related = recipes
+        .filter(r => r.id !== recipe.id)
+        .filter(r => r.tags.some(tag => recipe.tags.includes(tag)))
+        .slice(0, 3);
+
+      const props: RecipeDetailPageProps = {
+        recipe,
+        relatedRecipes: related,
+      };
+
+      return {
+        component: 'RecipeDetailPage',
+        props,
+        url: `/recipe/${recipeId}`,
+      };
+    }
+  }
+
+  // Search/filter page
+  if (path === '/search') {
+    const query = url.searchParams.get('q') || '';
+    const tags = url.searchParams.getAll('tag');
+    const difficulty = url.searchParams.get('difficulty');
+
+    let filtered = recipes;
+
+    // Filter by query
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      filtered = filtered.filter(r =>
+        r.title.toLowerCase().includes(lowerQuery) ||
+        r.description.toLowerCase().includes(lowerQuery) ||
+        r.tags.some(tag => tag.includes(lowerQuery))
+      );
+    }
+
+    // Filter by tags
+    if (tags.length > 0) {
+      filtered = filtered.filter(r =>
+        tags.some(tag => r.tags.includes(tag))
+      );
+    }
+
+    // Filter by difficulty
+    if (difficulty === 'easy' || difficulty === 'medium' || difficulty === 'hard') {
+      filtered = filtered.filter(r => r.difficulty === difficulty);
+    }
+
+    const props: RecipeSearchPageProps = {
+      recipes: filtered,
+      query,
+      selectedTags: tags,
+      selectedDifficulty: (difficulty === 'easy' || difficulty === 'medium' || difficulty === 'hard')
+        ? difficulty
+        : undefined,
+    };
+
+    return {
+      component: 'RecipeSearchPage',
+      props,
+      url: path,
+    };
+  }
+
+  // Add recipe page
+  if (path === '/add') {
+    const props: AddRecipePageProps = {
+      tags: getAllTags(),
+    };
+
+    return {
+      component: 'AddRecipePage',
+      props,
+      url: '/add',
+    };
+  }
+
+  // 404
+  return {
+    component: 'NotFound',
+    props: {} as any, // NotFound doesn't need props
+    url: path,
+  };
 }
 
 // HTTP request handler
 async function handleRequest(request: Request): Promise<Response> {
-  totalRequests++;
-
   const url = new URL(request.url);
   const path = url.pathname;
   const isSwitchback = request.headers.get('X-Switchback');
 
   console.log(`${request.method} ${path} ${isSwitchback ? '(Switchback)' : ''}`);
 
-  try {
-    // SSE endpoint for metrics (connection tracked in createSSEStream)
-    if (path === '/api/metrics/stream') {
-      addActivity('info', 'Metrics stream connected', 'Client subscribed to real-time metrics');
-
-      const stream = createSSEStream(metricsClients);
-
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-        }
+  // Serve bundled app.js
+  if (path === '/dist/app.js') {
+    try {
+      const file = await Deno.readFile('./dist/app.js');
+      return new Response(file, {
+        headers: { 'Content-Type': 'application/javascript' },
       });
+    } catch {
+      return new Response('Build not found. Run: deno task build', { status: 404 });
     }
+  }
 
-    // SSE endpoint for activity log (connection tracked in createSSEStream)
-    if (path === '/api/activity/stream') {
-      addActivity('success', 'Activity stream connected', 'Client subscribed to live activity updates');
+  // Handle page routes
+  const pageData = handlePageRoute(url);
 
-      const stream = createSSEStream(activityClients);
+  // Return JSON for Switchback requests
+  if (isSwitchback) {
+    return new Response(JSON.stringify(pageData), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-        }
-      });
-    }
-
-    // REST API endpoints
-    if (path === '/api/metrics') {
-      return new Response(JSON.stringify(generateMetrics()), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    if (path === '/api/activity') {
-      return new Response(JSON.stringify(activityLog), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // POST endpoint to add custom activity
-    if (path === '/api/activity' && request.method === 'POST') {
-      const body = await request.json();
-      addActivity(body.type || 'info', body.message, body.details);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Serve bundled app.js
-    if (path === '/dist/app.js') {
-      try {
-        const file = await Deno.readFile('./dist/app.js');
-        return new Response(file, {
-          headers: { 'Content-Type': 'application/javascript' }
-        });
-      } catch {
-        return new Response('Build not found. Run: deno task build', { status: 404 });
-      }
-    }
-
-    // Serve other static files
-    if (path.startsWith('/dist/')) {
-      try {
-        const filePath = `.${path}`;
-        const file = await Deno.readFile(filePath);
-
-        const contentType = path.endsWith('.js') ? 'application/javascript' :
-                           path.endsWith('.css') ? 'text/css' :
-                           'application/octet-stream';
-
-        return new Response(file, {
-          headers: { 'Content-Type': contentType }
-        });
-      } catch {
-        return new Response('Not Found', { status: 404 });
-      }
-    }
-
-    // Handle page routes
-    const pageData = handlePageRoute(url);
-
-    // Return JSON for Switchback requests
-    if (isSwitchback) {
-      return new Response(JSON.stringify(pageData), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Return full HTML for initial page load
-    const html = `<!DOCTYPE html>
+  // Return full HTML for initial page load
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deno Real-Time Dashboard - Switchback</title>
+  <title>Recipe Manager - Switchback + Deno</title>
   <style>
     body {
       margin: 0;
@@ -350,63 +360,33 @@ async function handleRequest(request: Request): Promise<Response> {
 </body>
 </html>`;
 
-    return new Response(html, {
-      headers: { 'Content-Type': 'text/html' }
-    });
-
-  } finally {
-    // Don't decrement here - SSE connections are tracked in createSSEStream
-    // Regular HTTP requests finish immediately so no tracking needed
-  }
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html' },
+  });
 }
 
 // Start server
-console.log(`🦕 Deno server starting on http://localhost:${PORT}`);
-console.log('📊 Real-time dashboard with Server-Sent Events');
-console.log('⚡ Switchback integration enabled');
+console.log(`🦕 Deno Recipe Manager starting on http://localhost:${PORT}`);
+console.log('📚 Type-safe cookbook with Switchback integration');
 console.log('');
 
-const server = Deno.serve({
+Deno.serve({
   port: PORT,
   onListen: () => {
     console.log(`✅ Server running on http://localhost:${PORT}`);
     console.log('');
-    console.log('Available endpoints:');
-    console.log('  GET  /                     - Dashboard page');
-    console.log('  GET  /activity             - Activity log page');
-    console.log('  GET  /api/metrics          - Current metrics (REST)');
-    console.log('  GET  /api/metrics/stream   - Real-time metrics (SSE)');
-    console.log('  GET  /api/activity         - Activity log (REST)');
-    console.log('  GET  /api/activity/stream  - Real-time activity (SSE)');
-    console.log('  POST /api/activity         - Add custom activity');
+    console.log('Available routes:');
+    console.log('  GET  /                 - Recipe book home');
+    console.log('  GET  /recipe/:id       - Recipe detail');
+    console.log('  GET  /search?q=...     - Search recipes');
+    console.log('  GET  /add              - Add new recipe');
     console.log('');
-  }
+    console.log('💡 Shared types: server.ts and app.ts use the same TypeScript interfaces!');
+  },
 }, handleRequest);
 
 // Graceful shutdown
-Deno.addSignalListener("SIGINT", () => {
+Deno.addSignalListener('SIGINT', () => {
   console.log('\n🛑 Shutting down gracefully...');
-
-  // Close all SSE connections
-  metricsClients.forEach(controller => {
-    try {
-      controller.close();
-    } catch {
-      // Ignore errors
-    }
-  });
-
-  activityClients.forEach(controller => {
-    try {
-      controller.close();
-    } catch {
-      // Ignore errors
-    }
-  });
-
-  metricsClients.clear();
-  activityClients.clear();
-
-  console.log('✅ All connections closed');
   Deno.exit(0);
 });

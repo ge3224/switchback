@@ -1,110 +1,139 @@
 # Deno Recipe - Switchback Integration
 
-A real-time dashboard showcasing **Server-Sent Events (SSE)** for live data streaming from a Deno backend to a Switchback SPA.
+A full-featured Recipe Manager demonstrating **Shared TypeScript Types** between server and client. Shows Deno's killer feature: native TypeScript with zero build step for the server!
 
-## 🎯 What This Demonstrates
+## What's Included
 
-This recipe shows the **powerful real-time interplay between Switchback and Deno**:
+- **shared-types.ts** - TypeScript types used by BOTH server and client
+- **server.ts** - Type-safe Deno HTTP server with recipe data
+- **app.ts** - Client-side Switchback app with fully typed components
+- **deno.json** - Deno configuration with build tasks
+- **Docker setup** - Multi-stage build for production deployment
 
-- **Server-Sent Events (SSE)**: Unidirectional push updates from server to client
-- **Real-Time Metrics**: Live CPU, memory, connections streaming every second
-- **Activity Feed**: Instant updates when events occur on the server
-- **No Polling**: Browser doesn't repeatedly ask for updates - server pushes them
-- **Deno Native**: Built-in TypeScript, modern APIs, zero config needed
+## The Key Feature: Shared TypeScript Types
 
-## 🏗️ Architecture
+This recipe showcases Deno's unique advantage - **the same TypeScript types** are imported by both server and client:
 
+```typescript
+// shared-types.ts - imported by BOTH server.ts AND app.ts
+export interface Recipe {
+  id: string;
+  title: string;
+  description: string;
+  author: string;
+  prepTime: number;
+  cookTime: number;
+  servings: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  ingredients: Ingredient[];
+  steps: string[];
+  tags: string[];
+  nutrition: NutritionInfo;
+  imageUrl?: string;
+  createdAt: Date;
+}
 ```
-┌─────────────────────────────────────────────────┐
-│  Switchback (Frontend SPA)                      │
-│  ├─ app.visit() for client-side routing         │
-│  ├─ EventSource API for SSE connections         │
-│  ├─ Real-time UI updates on data push           │
-│  └─ Live charts and activity feed               │
-└─────────────────┬───────────────────────────────┘
-                  │ SSE Streams
-┌─────────────────▼───────────────────────────────┐
-│  Deno Backend (SSE Server)                      │
-│  ├─ ReadableStream for SSE connections          │
-│  ├─ Real-time metrics broadcast (every 1s)      │
-│  ├─ Activity log streaming on events            │
-│  └─ RESTful fallback endpoints                  │
-└─────────────────────────────────────────────────┘
+
+### Server-Side (server.ts)
+```typescript
+import type { Recipe, RecipeBookPageProps } from './shared-types.ts';
+
+const recipes: Recipe[] = [
+  { id: '1', title: 'Margherita Pizza', /* ... fully typed! */ },
+];
+
+function handlePageRoute(url: URL): {
+  component: string;
+  props: RecipeBookPageProps | RecipeDetailPageProps;
+  url: string;
+} {
+  // TypeScript validates everything at compile time!
+  const props: RecipeBookPageProps = {
+    recipes: recipes,
+    featuredRecipe: recipes[0],
+    popularTags: getAllTags(),
+  };
+  return { component: 'RecipeBookPage', props, url: '/' };
+}
 ```
 
-## 🔗 What Are Server-Sent Events?
+### Client-Side (app.ts)
+```typescript
+import type { RecipeBookPageProps } from './shared-types.ts';
+import { getTotalTime, formatTime } from './shared-types.ts';
 
-**Server-Sent Events (SSE)** is a web standard for **pushing updates from server to browser** over HTTP.
+const pages = {
+  'RecipeBookPage': (props: RecipeBookPageProps) => {
+    // TypeScript knows EXACTLY what's in props!
+    // Try typing "props." - you get autocomplete for:
+    // - props.recipes (Recipe[])
+    // - props.featuredRecipe (Recipe)
+    // - props.popularTags (string[])
 
-### Key Differences from Other Approaches
+    return h('div', {},
+      h('p', {}, `${props.recipes.length} delicious recipes`),
+      h('div', { class: 'recipe-grid' },
+        ...props.recipes.map(recipe => RecipeCard(recipe))
+      )
+    );
+  },
+};
+```
 
-| Feature | SSE | WebSockets | Polling |
-|---------|-----|------------|---------|
-| **Direction** | Server → Client (one-way) | Bidirectional | Client asks repeatedly |
-| **Protocol** | HTTP/HTTPS | Custom (ws://) | HTTP/HTTPS |
-| **Auto-Reconnect** | Built-in | Manual | N/A |
-| **Complexity** | Simple | Complex | Simple but wasteful |
-| **Use Case** | Live updates, feeds | Chat, gaming | Legacy compatibility |
+### Shared Helper Functions
 
-### Why SSE for This Recipe?
+Even better - utility functions can be shared too:
 
-- ✅ **Perfect for dashboards**: Server pushes metrics, client displays them
-- ✅ **Simpler than WebSockets**: No need for bidirectional communication
-- ✅ **Native browser support**: EventSource API built into all modern browsers
-- ✅ **Automatic reconnection**: Browser handles reconnects if connection drops
-- ✅ **HTTP-friendly**: Works through proxies, load balancers, CDNs
+```typescript
+// shared-types.ts
+export function getTotalTime(recipe: Recipe): number {
+  return recipe.prepTime + recipe.cookTime;
+}
 
-## 🚀 Running the Demo
+export function formatTime(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+```
+
+These work on both server and client!
+
+## Running Locally
 
 ### Prerequisites
 
-- [Deno 2.1+](https://deno.land/) - **That's it!** No Node.js required 🎉
-- Or just use Docker
+- Deno 2.0+ ([install guide](https://deno.land/manual/getting_started/installation))
+- No Node.js needed! (But esbuild is used for client bundling)
 
-### Option 1: Pure Deno Build (Recommended)
-
-Build and run with **pure Deno** - no Node.js, no npm, no pnpm needed:
+### Build and Run
 
 ```bash
 cd examples/recipes/deno
 
-# Build app.ts + Switchback into dist/app.js using Deno + esbuild
+# Build the client bundle (bundles app.ts + Switchback)
 deno task build
 
-# Run server
+# Run the server (no build step needed - Deno runs TypeScript!)
 deno task serve
 ```
 
 Open http://localhost:8000
 
-**For development with auto-reload:**
+**For development with auto-rebuild:**
 
 ```bash
-# Terminal 1: Build once (or rebuild when you change app.ts)
-deno task build
+# Terminal 1: Watch and rebuild client on changes
+deno task build --watch
 
-# Terminal 2: Run Deno server with auto-restart on server changes
+# Terminal 2: Watch and restart server on changes
 deno task dev
 ```
 
-### Option 2: Node.js Build (Legacy)
+### Option 2: Docker (Recommended)
 
-If you prefer using Node.js tools:
-
-```bash
-# Install dependencies (uses parent's node_modules for vite/typescript)
-pnpm install --dir ../../../
-
-# Build app.ts + Switchback into dist/app.js
-pnpm build
-
-# Run server
-deno run --allow-net --allow-read server.ts
-```
-
-### Option 3: Docker (Easiest)
-
-Docker will automatically build everything using **pure Deno** (no Node.js in the container):
+Docker will automatically build everything:
 
 ```bash
 # From examples/recipes/deno directory
@@ -117,550 +146,254 @@ docker-compose up
 
 Open http://localhost:8000
 
-**Note:** The Dockerfile uses a multi-stage build with **100% Deno**:
-1. **Builder stage**: Uses Deno to bundle app.ts with Switchback (via esbuild from npm)
-2. **Runtime stage**: Minimal Deno image with compiled JS bundle
-3. **No Node.js required!** Everything runs through Deno's npm compatibility layer
+**Note:** The Dockerfile uses a multi-stage build:
+1. **Deno builder stage**: Bundles client TypeScript with esbuild
+2. **Runtime stage**: Minimal Deno image with compiled bundle
+3. Server runs TypeScript directly - no transpilation!
 
-## 📊 Try the Real-Time Features
+## Available Routes
 
-### Dashboard Page
+### Recipe Book
+- `GET /` - Home page with all recipes and featured recipe
+- Shows recipe cards with images, descriptions, difficulty badges
+- Click any recipe to view details
 
-1. Watch the **CPU and Memory metrics** update every second
-2. See the **mini-charts** grow as data streams in
-3. Observe the **Active Connections** counter change as you open/close tabs
-4. Check the **Stream Status** showing live SSE connections
+### Recipe Detail
+- `GET /recipe/:id` - Full recipe with ingredients, steps, nutrition
+- Related recipes based on shared tags
+- Fully typed with `RecipeDetailPageProps`
 
-### Activity Feed
+### Search
+- `GET /search?q=pizza` - Search by keyword
+- `GET /search?tag=italian` - Filter by tag
+- `GET /search?difficulty=easy` - Filter by difficulty
+- Combine filters: `?q=pizza&tag=italian&difficulty=medium`
 
-1. Navigate to the **Activity Log** page
-2. Watch new activities appear **instantly** without refreshing
-3. Try the **"Add Custom Activity"** form
-4. Submit an activity and see it appear in real-time
+## Project Structure
 
-### Multi-Tab Test
+```
+deno/
+├── shared-types.ts      # Types used by both server and client
+├── server.ts            # Deno HTTP server with typed routes
+├── app.ts               # Client Switchback app with typed components
+├── deno.json            # Deno config + build tasks
+├── Dockerfile           # Docker image
+├── docker-compose.yml   # Docker setup
+└── README.md            # This file
+```
 
-1. Open the dashboard in **multiple browser tabs**
-2. All tabs receive the **same real-time updates simultaneously**
-3. Add an activity in one tab - see it appear in **all tabs instantly**
+## Key Features Demonstrated
 
-## 🔧 How SSE Works in This Recipe
+- ✅ **Shared TypeScript Types** - Same interfaces on server and client
+- ✅ **Zero-config TypeScript** - Deno runs .ts files natively
+- ✅ **Full type safety** - Compile-time validation across full stack
+- ✅ **Shared utility functions** - Helper functions work everywhere
+- ✅ **Type-safe Switchback** - Page props are fully typed
+- ✅ **Recipe domain model** - Complex nested types (Recipe, Ingredient, Nutrition)
+- ✅ **Search and filtering** - Query params with type validation
+- ✅ **Related recipes** - Tag-based recommendation system
 
-### Server Side (Deno)
+## Why This Matters
+
+Traditional Node.js/Express approach:
 
 ```typescript
-// Create SSE stream with ReadableStream
-function createSSEStream(clientSet: Set<ReadableStreamDefaultController>) {
-  return new ReadableStream({
-    start(controller) {
-      clientSet.add(controller);
-      // Keep connection alive
-      controller.enqueue(new TextEncoder().encode(': heartbeat\n\n'));
-    },
-    cancel() {
-      clientSet.delete(controller); // Clean up on disconnect
-    }
-  });
-}
+// server.ts (Node + Express)
+interface Recipe { /* types */ }
+const recipes: Recipe[] = [/* data */];
 
-// Broadcast to all connected clients
-function broadcastMetrics(metrics: Metrics) {
-  const data = `data: ${JSON.stringify(metrics)}\n\n`;
-
-  metricsClients.forEach(controller => {
-    controller.enqueue(new TextEncoder().encode(data));
-  });
-}
-
-// SSE endpoint
-if (path === '/api/metrics/stream') {
-  const stream = createSSEStream(metricsClients);
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    }
-  });
-}
-```
-
-### Client Side (Switchback)
-
-```typescript
-// Connect to SSE stream
-metricsEventSource = new EventSource('/api/metrics/stream');
-
-// Handle incoming messages
-metricsEventSource.onmessage = (event) => {
-  const metrics = JSON.parse(event.data);
-  state.metrics = metrics;
-
-  // Add to history for charting
-  state.metricsHistory.push({
-    timestamp: Date.now(),
-    cpu: metrics.cpu,
-    memory: metrics.memory
-  });
-
-  // Manually update DOM (avoid full page reload for smooth updates)
-  updateMetricsUI();
-};
-
-// Handle errors and reconnection
-metricsEventSource.onerror = () => {
-  console.error('Stream disconnected');
-  metricsEventSource?.close();
-};
-```
-
-## 📡 API Endpoints
-
-### SSE Endpoints (Real-Time Streaming)
-
-#### `GET /api/metrics/stream`
-Stream real-time system metrics (updates every 1 second)
-
-```bash
-curl -N http://localhost:8000/api/metrics/stream
-```
-
-Response (SSE format):
-```
-data: {"timestamp":"2024-01-15T10:30:00Z","cpu":45.2,"memory":62.1,"activeConnections":3,"totalRequests":127,"uptime":3600}
-
-data: {"timestamp":"2024-01-15T10:30:01Z","cpu":46.8,"memory":62.3,"activeConnections":3,"totalRequests":128,"uptime":3601}
-```
-
-#### `GET /api/activity/stream`
-Stream real-time activity log updates (as events occur)
-
-```bash
-curl -N http://localhost:8000/api/activity/stream
-```
-
-Response (SSE format):
-```
-data: {"id":42,"timestamp":"2024-01-15T10:30:05Z","type":"success","message":"API request completed","details":"Response time: 125ms"}
-```
-
-### REST Endpoints (Fallback)
-
-#### `GET /api/metrics`
-Get current metrics snapshot
-
-```bash
-curl http://localhost:8000/api/metrics
-```
-
-Response:
-```json
-{
-  "timestamp": "2024-01-15T10:30:00Z",
-  "cpu": 45.2,
-  "memory": 62.1,
-  "activeConnections": 3,
-  "totalRequests": 127,
-  "uptime": 3600
-}
-```
-
-#### `GET /api/activity`
-Get full activity log
-
-```bash
-curl http://localhost:8000/api/activity
-```
-
-Response:
-```json
-[
-  {
-    "id": 1,
-    "timestamp": "2024-01-15T10:30:00Z",
-    "type": "success",
-    "message": "Server started",
-    "details": "Deno server initialized on port 8000"
-  }
-]
-```
-
-#### `POST /api/activity`
-Add a custom activity
-
-```bash
-curl -X POST http://localhost:8000/api/activity \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "info",
-    "message": "Custom event",
-    "details": "Triggered from curl"
-  }'
-```
-
-## 🦕 Why Deno?
-
-### Advantages Over Node.js
-
-| Feature | Deno | Node.js |
-|---------|------|---------|
-| **TypeScript** | Built-in, zero config | Requires ts-node or compilation |
-| **Security** | Explicit permissions | Full access by default |
-| **Standard Library** | Comprehensive, stable | Fragmented in npm |
-| **Module System** | ESM only, URL/npm imports | CommonJS + ESM |
-| **Tooling** | Bundled (fmt, lint, test, bundle) | Separate packages |
-| **Dependency Management** | No node_modules (Deno 2.0+) | npm/yarn/pnpm needed |
-| **npm Compatibility** | Direct `npm:` imports (Deno 2.0+) | Native |
-
-### Perfect For
-
-- ✅ **Modern web APIs**: Built-in fetch, WebSocket, SSE support
-- ✅ **TypeScript-first**: No build step for server code
-- ✅ **Security**: Explicit --allow-net, --allow-read flags
-- ✅ **Simplicity**: Single executable, minimal config
-- ✅ **Real-time apps**: Native ReadableStream for SSE
-- ✅ **Zero node_modules**: Deno 2.0 caches everything globally
-
-## 🎓 Key Concepts
-
-### 1. Server-Sent Events Format
-
-SSE uses a simple text format over HTTP:
-
-```
-data: This is a message\n\n
-
-data: {"json": "works too"}\n\n
-
-data: Multi-line\n
-data: messages\n
-data: work fine\n\n
-
-: This is a comment (ignored by browser)\n\n
-```
-
-Each message ends with `\n\n` (two newlines).
-
-### 2. Automatic Reconnection
-
-If the SSE connection drops, the browser automatically reconnects:
-
-```typescript
-metricsEventSource.onerror = () => {
-  // Browser automatically attempts to reconnect
-  // You just need to handle the error state
-  console.log('Connection lost, reconnecting...');
-};
-```
-
-### 3. Multiple Concurrent Streams
-
-A single client can subscribe to multiple SSE streams:
-
-```typescript
-const metricsStream = new EventSource('/api/metrics/stream');
-const activityStream = new EventSource('/api/activity/stream');
-
-// Each stream is independent
-```
-
-### 4. Broadcasting to All Clients
-
-The server maintains a Set of all connected clients:
-
-```typescript
-const clients = new Set<ReadableStreamDefaultController>();
-
-// Add on connect
-clients.add(controller);
-
-// Broadcast to all
-clients.forEach(controller => {
-  controller.enqueue(data);
+app.get('/api/recipes', (req, res) => {
+  res.json(recipes); // Type safety ends here
 });
 
-// Remove on disconnect
-clients.delete(controller);
-```
-
-## 📈 Data Flow Example
-
-**User opens dashboard:**
-
-```
-1. Browser:    GET / (initial page load)
-               ↓
-2. Deno:       Return HTML with window.initialPage
-               ↓
-3. Switchback: Mount Dashboard component
-               ↓
-4. Component:  new EventSource('/api/metrics/stream')
-               ↓
-5. Browser:    GET /api/metrics/stream (SSE connection)
-               ↓
-6. Deno:       Create ReadableStream, add to metricsClients Set
-               ↓
-7. Deno:       setInterval every 1s → broadcastMetrics()
-               ↓
-8. Deno:       Send "data: {...metrics...}\n\n" to all clients
-               ↓
-9. Browser:    EventSource.onmessage fires
-               ↓
-10. Component: Update state.metrics, call app.reload()
-               ↓
-11. Switchback: Re-render with new data (DOM updates)
-               ↓
-12. Repeat:    New metrics every second (connection stays open!)
-```
-
-## 🔄 Comparison with Other Approaches
-
-### SSE (This Recipe)
-```typescript
-// Server pushes updates
-const stream = new EventSource('/api/metrics/stream');
-stream.onmessage = (e) => updateUI(e.data);
-// ✅ Efficient, automatic, real-time
-```
-
-### Polling (Traditional)
-```typescript
-// Client repeatedly asks
-setInterval(async () => {
-  const data = await fetch('/api/metrics');
-  updateUI(await data.json());
-}, 1000);
-// ❌ Wasteful, delayed, server load
-```
-
-### WebSockets (Overkill for one-way data)
-```typescript
-// Bidirectional when you only need one-way
-const ws = new WebSocket('ws://localhost/metrics');
-ws.onmessage = (e) => updateUI(e.data);
-// ⚠️  More complex, not always necessary
-```
-
-## 🎯 Learning Points
-
-1. **SSE is Perfect for Live Dashboards**
-   - Server generates data → pushes to all clients
-   - No need for clients to poll repeatedly
-   - Automatic reconnection on network issues
-
-2. **Deno Makes SSE Easy**
-   - ReadableStream is built-in (no libraries needed)
-   - TypeScript support out of the box
-   - Clean, modern API
-
-3. **Switchback + SSE = Powerful Combo**
-   - Switchback handles SPA navigation (`app.visit()`)
-   - SSE handles real-time data updates
-   - Together: smooth UX with live updates
-
-4. **Practical Architecture**
-   - Frontend: EventSource for SSE, Switchback for routing
-   - Backend: ReadableStream for SSE, REST for fallback
-   - Result: Real-time dashboard without complex WebSocket setup
-
-## 🚀 Extending This Example
-
-### Add More Metrics
-
-In `server.ts`, extend the `Metrics` type:
-
-```typescript
-interface Metrics {
-  timestamp: string;
-  cpu: number;
-  memory: number;
-  diskUsage: number;      // NEW
-  networkTraffic: number; // NEW
-  activeConnections: number;
-  totalRequests: number;
-  uptime: number;
-}
-```
-
-### Add Event Filtering
-
-Allow clients to filter events by type:
-
-```typescript
-// Client side
-const stream = new EventSource('/api/activity/stream?type=error');
-
-// Server side
-const type = url.searchParams.get('type');
-const shouldBroadcast = !type || activity.type === type;
-```
-
-### Add Custom Event Types
-
-SSE supports named events:
-
-```typescript
-// Server
-controller.enqueue(
-  new TextEncoder().encode(`event: metrics\ndata: {...}\n\n`)
-);
-
-// Client
-stream.addEventListener('metrics', (e) => {
-  console.log('Metrics event:', e.data);
+// client.ts (separate build)
+// Have to duplicate Recipe type OR use codegen
+interface Recipe { /* duplicate types! */ }
+fetch('/api/recipes').then(data => {
+  // No compile-time guarantee data matches Recipe
 });
 ```
 
-### Add Persistent Storage
-
-Replace in-memory state with a database:
+**Deno + Switchback approach:**
 
 ```typescript
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
+// shared-types.ts
+export interface Recipe { /* types */ }
 
-const db = new DB("dashboard.db");
-db.query(`
-  CREATE TABLE IF NOT EXISTS activities (
-    id INTEGER PRIMARY KEY,
-    timestamp TEXT,
-    type TEXT,
-    message TEXT,
-    details TEXT
-  )
-`);
+// server.ts - imports shared types
+import type { Recipe } from './shared-types.ts';
+const recipes: Recipe[] = [/* data */];
+
+// app.ts - imports THE SAME types
+import type { Recipe } from './shared-types.ts';
+// TypeScript validates everything!
 ```
+
+**Benefits:**
+- 🎯 Single source of truth for types
+- ⚡ No type generation or duplication
+- 🔒 Compile-time safety across the stack
+- 🛠️ Refactor once, type-check everywhere
+- 📦 Helper functions shared between server/client
+
+## Comparison with Other Recipes
+
+- **PHP Recipe**: Shows basic navigation with a scripting language
+- **C Recipe**: Shows optimistic updates with systems programming
+- **Rust Recipe**: Shows database integration with compile-time safety
+- **Zig Recipe**: Shows form handling with modern systems language
+- **Deno Recipe**: Shows **TypeScript type sharing** across client/server
+
+Each recipe demonstrates different Switchback patterns and language ecosystems!
+
+## Extending This Example
+
+### Add a New Field to Recipe
+
+In `shared-types.ts`:
+
+```typescript
+export interface Recipe {
+  id: string;
+  title: string;
+  // ... existing fields
+  cuisine: string; // NEW: cuisine type
+}
+```
+
+That's it! TypeScript will now validate this field everywhere:
+- Server data must include `cuisine`
+- Client components can access `recipe.cuisine` safely
+- Autocomplete works in both server.ts and app.ts
+
+### Add Recipe Creation
+
+In `server.ts`:
+
+```typescript
+if (request.method === 'POST' && path === '/api/recipes') {
+  const body = await request.json();
+
+  // TypeScript validates the structure!
+  const newRecipe: Recipe = {
+    id: String(recipes.length + 1),
+    title: body.title,
+    description: body.description,
+    // ... TypeScript ensures all required fields
+  };
+
+  recipes.push(newRecipe);
+
+  return Response.json({ recipe: newRecipe });
+}
+```
+
+In `app.ts`, add an "Add Recipe" page with a form that submits to `/api/recipes`.
+
+### Add Deno KV for Persistence
+
+Replace in-memory storage with Deno KV:
+
+```typescript
+const kv = await Deno.openKv();
+
+// Save recipe
+await kv.set(['recipes', recipe.id], recipe);
+
+// Load all recipes
+const entries = kv.list<Recipe>({ prefix: ['recipes'] });
+const recipes: Recipe[] = [];
+for await (const entry of entries) {
+  recipes.push(entry.value);
+}
+```
+
+Deno KV is built-in - no external database needed!
 
 ### Add Authentication
 
-Protect SSE endpoints with tokens:
+Use Deno's built-in Web Crypto API:
 
 ```typescript
-if (path === '/api/metrics/stream') {
-  const token = request.headers.get('Authorization');
-  if (!isValidToken(token)) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-  // ... create stream
-}
+import { create, verify } from 'https://deno.land/x/djwt/mod.ts';
+
+const jwt = await create({ alg: 'HS512', typ: 'JWT' }, { userId: '123' }, key);
+const payload = await verify(jwt, key);
 ```
 
-## 🛡️ Security Considerations
+## Troubleshooting
 
-This is a **demo application** and should not be used in production without additional hardening:
+**App not loading?**
+- Make sure you've run `deno task build`
+- Check that `dist/app.js` exists
+- Check browser console for import errors
 
-- ⚠️ No authentication on SSE endpoints
-- ⚠️ No rate limiting (could DOS with many connections)
-- ⚠️ Unbounded client sets (memory leak potential)
-- ⚠️ No input validation on POST endpoints
-- ⚠️ No HTTPS/TLS support
+**Deno errors?**
+- Update Deno: `deno upgrade`
+- Check version: `deno --version` (need 2.0+)
+- Clear cache: `deno cache --reload server.ts`
 
-For production, add:
-- **Authentication tokens** for SSE connections
-- **Rate limiting** per IP address
-- **Maximum connection limits** per client
-- **Connection timeouts** for idle clients
-- **Input validation** on all POST endpoints
-- **HTTPS** with proper certificates
-- **CORS policies** for cross-origin requests
-- **Logging and monitoring** for abuse detection
+**Type errors in VS Code?**
+- Install Deno extension: https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno
+- Enable Deno in workspace: Cmd+Shift+P → "Deno: Initialize Workspace Configuration"
+- Restart VS Code
 
-## 📚 Learn More About SSE
+**Docker issues?**
+- Make sure port 8000 is not in use: `lsof -i :8000`
+- Rebuild with `docker-compose build --no-cache`
+- Check logs: `docker-compose logs`
 
-- [MDN: Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
-- [HTML5 SSE Spec](https://html.spec.whatwg.org/multipage/server-sent-events.html)
-- [Deno ReadableStream Docs](https://deno.land/api?s=ReadableStream)
-- [When to Use SSE vs WebSockets](https://ably.com/topic/websockets-vs-sse)
+**Build issues?**
+- esbuild not found? Run `deno task build` from recipe directory
+- Module not found? Check import paths use `.ts` extension
+- Permission denied? Deno requires explicit permissions: `--allow-net --allow-read`
 
-## 🔍 Comparison with Other Recipes
+## Performance Notes
 
-- **PHP Recipe**: Basic navigation with traditional server-side rendering
-- **Zig Recipe**: Modern systems programming with form handling
-- **C Recipe**: Optimistic updates for instant UI feedback
-- **Go Recipe**: True concurrency with goroutines and worker pools
-- **Rust Recipe**: Embedded database with type safety
-- **Deno Recipe**: Real-time streaming with Server-Sent Events
+Deno's TypeScript performance:
+- **Server startup**: ~50ms (TypeScript runs natively!)
+- **Type checking**: Done at startup, zero runtime overhead
+- **Hot reload**: Fast incremental compilation
+- **Memory usage**: ~30MB for server (efficient V8 engine)
+- **HTTP throughput**: Comparable to Node.js (~50k req/sec)
 
-Each demonstrates different Switchback integrations. **Deno's SSE support is unique** - perfect for dashboards, notifications, live feeds, and any app that needs server-push updates.
+The client bundle is built once with esbuild (~100ms build time).
 
-## 🎬 Next Steps
+## Security Considerations
 
-Try modifying the recipe to:
-1. Add more metrics (disk I/O, network traffic, etc.)
-2. Create different chart types (bar, pie, etc.)
-3. Add event filtering by type or search
-4. Implement activity persistence with SQLite
-5. Add user authentication with JWT tokens
-6. Create multiple dashboard views
-7. Add export functionality (CSV, JSON)
-8. Implement activity alerts/notifications
+This is a **demo application**. For production, add:
 
-## 💡 Tips and Tricks
+- ✅ Input validation (use Zod or similar)
+- ✅ CSRF protection for POST requests
+- ✅ Rate limiting (use `x/ratelimit` middleware)
+- ✅ Authentication with JWT or sessions
+- ✅ HTTPS with TLS certificates
+- ✅ Content Security Policy headers
+- ✅ Sanitize user-generated content
 
-### Debugging SSE Connections
-
-Use browser DevTools Network tab:
-1. Filter by "EventStream" type
-2. Click on the SSE request
-3. View the "Messages" tab to see incoming events
-4. Check "EventStream" for connection status
-
-### Testing SSE with curl
-
+Deno's security model is permission-based - explicitly allow what you need:
 ```bash
-# See raw SSE data
-curl -N http://localhost:8000/api/metrics/stream
-
-# -N disables buffering so you see events in real-time
+deno run --allow-net=:8000 --allow-read=./dist server.ts
 ```
 
-### Handling Page Visibility
+## Why Deno?
 
-Pause streams when tab is hidden:
+This recipe showcases Deno's strengths:
 
-```typescript
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    metricsEventSource?.close();
-  } else {
-    connectMetricsStream(); // Reconnect
-  }
-});
-```
+- **TypeScript-first**: No tsconfig, no babel, no webpack for server
+- **Modern APIs**: Web standards (fetch, Response, URL) built-in
+- **Simple tooling**: `deno task` replaces npm scripts
+- **Secure by default**: Explicit permissions required
+- **Batteries included**: HTTP server, testing, formatting, linting all built-in
+- **Type sharing**: Import .ts files directly - share types everywhere!
 
-## 🐛 Troubleshooting
+Perfect for building type-safe full-stack applications with minimal configuration!
 
-**SSE not connecting?**
-- Check browser console for errors
-- Verify endpoint returns `Content-Type: text/event-stream`
-- Use curl to test: `curl -N http://localhost:8000/api/metrics/stream`
+## Learn More About Type Safety
 
-**Updates stop after a while?**
-- Some proxies/load balancers timeout idle connections
-- Add periodic heartbeat comments: `: keepalive\n\n`
-- Browser should auto-reconnect, but check `onerror` handler
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [Deno Manual](https://deno.land/manual)
+- [Type-safe APIs](https://www.apollographql.com/blog/backend/architecture/typescript-api-type-safety/)
+- [End-to-end Type Safety](https://www.prisma.io/blog/full-stack-typesafety-with-react-graphql-prisma)
 
-**Multiple reconnection attempts?**
-- Ensure you close old EventSource before creating new one
-- Use a single global EventSource per stream
-- Check for multiple component mounts
-
-**Memory usage growing?**
-- Limit `metricsHistory` size (already done in recipe)
-- Limit activity log size (already done in recipe)
-- Clean up EventSource on component unmount
-
-**Docker build fails?**
-- Ensure you're running from project root: `docker-compose -f examples/recipes/deno/docker-compose.yml up`
-- Or cd into the recipe directory first
-- Check Deno version in Dockerfile (should be 2.1+)
-
-**Port 8000 already in use?**
-- Change port in both server.ts and docker-compose.yml
-- Or stop the conflicting process: `lsof -ti:8000 | xargs kill`
-
----
-
-**Built with ❤️ to showcase Deno + Switchback real-time integration**
-
-Enjoy exploring real-time web applications with Server-Sent Events! 🦕📡⚡
+Type safety across the full stack prevents bugs and improves developer experience!
