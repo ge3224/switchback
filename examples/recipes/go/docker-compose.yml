@@ -3,6 +3,7 @@ version: '3.8'
 services:
   go:
     container_name: switchback_go
+    image: switchback-go:latest
     build:
       context: ../../..
       dockerfile: examples/recipes/go/Dockerfile

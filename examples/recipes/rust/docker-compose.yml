@@ -3,6 +3,7 @@ version: '3.8'
 services:
   rust:
     container_name: switchback_rust
+    image: switchback-rust:latest
     build:
       context: ../../..
       dockerfile: examples/recipes/rust/Dockerfile

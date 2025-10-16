@@ -3,6 +3,7 @@ version: '3.8'
 services:
   deno:
     container_name: switchback_deno
+    image: switchback-deno:latest
     build:
       context: ../../..
       dockerfile: examples/recipes/deno/Dockerfile

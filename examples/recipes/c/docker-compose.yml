@@ -3,6 +3,7 @@ version: '3.8'
 services:
   c:
     container_name: switchback_c
+    image: switchback-c:latest
     build:
       context: ../../..
       dockerfile: examples/recipes/c/Dockerfile

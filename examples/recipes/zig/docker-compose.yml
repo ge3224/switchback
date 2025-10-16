@@ -3,6 +3,7 @@ version: '3.8'
 services:
   zig:
     container_name: switchback_zig
+    image: switchback-zig:latest
     build:
       context: ../../..
       dockerfile: examples/recipes/zig/Dockerfile
