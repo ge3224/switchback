@@ -1,0 +1,16 @@
+{
+  "name": "switchback-erlang-recipe",
+  "version": "1.0.0",
+  "description": "Erlang/OTP chat recipe for Switchback - demonstrating the Actor Model",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}

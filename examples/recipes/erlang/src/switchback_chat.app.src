@@ -1,0 +1,16 @@
+{application, switchback_chat, [
+    {description, "Switchback Chat - Erlang/OTP Recipe"},
+    {vsn, "1.0.0"},
+    {registered, [chat_room]},
+    {mod, {switchback_chat_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        cowboy,
+        jsx
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["MIT"]},
+    {links, []}
+]}.

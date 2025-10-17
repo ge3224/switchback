@@ -1210,3 +1210,386 @@ describe("history navigation", () => {
     expect(app.page()).toEqual(storedPage);
   });
 });
+
+describe("SSR with HTML morphing", () => {
+  let mockFetch: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof global.fetch;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div data-swbk-app></div>';
+    history.replaceState(null, '', '/');
+
+    originalFetch = global.fetch;
+    mockFetch = vi.fn();
+    global.fetch = mockFetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("should render initial page with HTML field", () => {
+    const initialPage: Page = {
+      component: 'Home',
+      props: { title: 'Test' },
+      url: '/',
+      html: '<div class="home"><h1>Welcome</h1></div>',
+    };
+
+    newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    expect(appEl?.innerHTML).toContain('<h1>Welcome</h1>');
+    expect(appEl?.querySelector('.home')).toBeTruthy();
+  });
+
+  it("should morph HTML on navigation", async () => {
+    const initialPage: Page = {
+      component: 'Home',
+      props: {},
+      url: '/',
+      html: '<div class="page"><h1>Home</h1></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'About',
+      props: {},
+      url: '/about',
+      html: '<div class="page"><h1>About</h1></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/about');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    expect(appEl?.innerHTML).toContain('<h1>About</h1>');
+    expect(appEl?.querySelector('.page')).toBeTruthy();
+  });
+
+  it("should preserve element identity when morphing same tag", async () => {
+    const initialPage: Page = {
+      component: 'Home',
+      props: {},
+      url: '/',
+      html: '<div class="container"><button id="btn">Click</button></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Home',
+      props: {},
+      url: '/',
+      html: '<div class="container"><button id="btn">Updated</button></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    const originalButton = appEl?.querySelector('#btn');
+
+    await app.visit('/');
+
+    const newButton = appEl?.querySelector('#btn');
+    expect(newButton).toBe(originalButton); // Same DOM node
+    expect(newButton?.textContent).toBe('Updated');
+  });
+
+  it("should update attributes when morphing", async () => {
+    const initialPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div class="container" data-value="old"><p>Content</p></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div class="container updated" data-value="new"><p>Content</p></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/test');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    const container = appEl?.querySelector('.container');
+
+    expect(container?.classList.contains('updated')).toBe(true);
+    expect(container?.getAttribute('data-value')).toBe('new');
+  });
+
+  it("should remove old attributes not in new HTML", async () => {
+    const initialPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div class="old" data-remove="yes"><p>Content</p></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div class="new"><p>Content</p></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/test');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    const container = appEl?.firstElementChild;
+
+    expect(container?.classList.contains('old')).toBe(false);
+    expect(container?.classList.contains('new')).toBe(true);
+    expect(container?.hasAttribute('data-remove')).toBe(false);
+  });
+
+  it("should add new child nodes when morphing", async () => {
+    const initialPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><p>One</p></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><p>One</p><p>Two</p></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/test');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    const paragraphs = appEl?.querySelectorAll('p');
+
+    expect(paragraphs?.length).toBe(2);
+    expect(paragraphs?.[0].textContent).toBe('One');
+    expect(paragraphs?.[1].textContent).toBe('Two');
+  });
+
+  it("should remove extra child nodes when morphing", async () => {
+    const initialPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><p>One</p><p>Two</p><p>Three</p></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><p>One</p></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/test');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    const paragraphs = appEl?.querySelectorAll('p');
+
+    expect(paragraphs?.length).toBe(1);
+    expect(paragraphs?.[0].textContent).toBe('One');
+  });
+
+  it("should update text nodes when morphing", async () => {
+    const initialPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><p>Old text</p></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><p>New text</p></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/test');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    const paragraph = appEl?.querySelector('p');
+
+    expect(paragraph?.textContent).toBe('New text');
+  });
+
+  it("should fallback to component rendering when html field is missing", async () => {
+    const mockPage: Page = {
+      component: 'Test',
+      props: { value: 42 },
+      url: '/test',
+      // No html field - should use traditional rendering
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => mockPage,
+    });
+
+    const setupSpy = vi.fn();
+    const resolveSpy = vi.fn(() => () => {
+      const el = document.createElement('div');
+      el.textContent = 'Component rendered';
+      return el;
+    });
+
+    const app = newSwitchback({
+      resolve: resolveSpy,
+      setup: setupSpy,
+    });
+
+    await app.visit('/test');
+
+    expect(resolveSpy).toHaveBeenCalledWith('Test');
+    expect(setupSpy).toHaveBeenCalled();
+  });
+
+  it("should handle mixed HTML and text nodes", async () => {
+    const initialPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div>Text before<span>Middle</span>Text after</div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div>Updated before<span>Middle</span>Updated after</div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/test');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+    const div = appEl?.firstElementChild;
+
+    expect(div?.textContent).toBe('Updated beforeMiddleUpdated after');
+    expect(div?.querySelector('span')?.textContent).toBe('Middle');
+  });
+
+  it("should replace elements with different tags", async () => {
+    const initialPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><span>Content</span></div>',
+    };
+
+    const nextPage: Page = {
+      component: 'Test',
+      props: {},
+      url: '/test',
+      html: '<div><p>Content</p></div>',
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => nextPage,
+    });
+
+    const app = newSwitchback({
+      resolve: () => () => document.createElement('div'),
+      setup: () => { },
+      initialPage,
+    });
+
+    await app.visit('/test');
+
+    const appEl = document.querySelector('[data-swbk-app]');
+
+    expect(appEl?.querySelector('span')).toBeNull();
+    expect(appEl?.querySelector('p')).toBeTruthy();
+    expect(appEl?.querySelector('p')?.textContent).toBe('Content');
+  });
+});

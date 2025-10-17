@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  erlang:
+    container_name: switchback_erlang
+    image: switchback-erlang:latest
+    build:
+      context: ../../../
+      dockerfile: examples/recipes/erlang/Dockerfile
+    ports:
+      - "8000:8000"
+    # volumes:
+    #   - ./src:/app/src
+    environment:
+      - ERLANG_COOKIE=switchback_secret_cookie
+    stdin_open: true
+    tty: true

@@ -1,0 +1,300 @@
+%% -*- coding: utf-8 -*-
+%%%-------------------------------------------------------------------
+%%% @doc
+%%% HTML Renderer - Server-side rendering for Switchback components
+%%% Renders HTML that gets morphed into the DOM by Switchback
+%%% @end
+%%%-------------------------------------------------------------------
+-module(html_renderer).
+-export([render_page/3]).
+
+%%====================================================================
+%% API Functions
+%%====================================================================
+
+render_page(<<"Home">>, Props, RenderCount) ->
+    render_home(Props, RenderCount);
+
+render_page(<<"Article">>, Props, RenderCount) ->
+    render_article(Props, RenderCount);
+
+render_page(<<"About">>, Props, RenderCount) ->
+    render_about(Props, RenderCount);
+
+render_page(<<"Error">>, Props, RenderCount) ->
+    render_error(Props, RenderCount);
+
+render_page(_, _, _) ->
+    <<"<div><h1>Unknown Component</h1></div>">>.
+
+%%====================================================================
+%% Internal Rendering Functions
+%%====================================================================
+
+render_home(Props, RenderCount) ->
+    #{articles := Articles, stats := Stats} = Props,
+    #{
+        total_articles := TotalArticles,
+        total_views := TotalViews,
+        most_viewed := MostViewed,
+        last_viewed_article_id := LastViewedId
+    } = Stats,
+
+    MostViewedTitle = case MostViewed of
+        none -> <<"None">>;
+        _ -> maps:get(title, MostViewed)
+    end,
+
+    [
+        <<"<div>">>,
+        render_nav(),
+        <<"<main>">>,
+        render_demo_hint(RenderCount),
+        <<"<h1>Erlang Blog <span class=\"badge\">🟣 SSR Demo</span></h1>">>,
+        <<"<div class=\"terminal-box\">">>,
+        <<"A blog powered by <code>Erlang/OTP</code> with <code>Switchback SSR</code>. ">>,
+        <<"Articles are managed by a gen_server, rendered server-side, and morphed into the DOM.">>,
+        <<"</div>">>,
+        <<"<div class=\"stats\">">>,
+        render_stat_card(integer_to_binary(TotalArticles), <<"Total Articles">>),
+        render_stat_card(integer_to_binary(TotalViews), <<"Total Views">>),
+        render_stat_card(MostViewedTitle, <<"Most Viewed">>),
+        <<"</div>">>,
+        <<"<h2 style=\"margin-top: 3rem;\">📚 All Articles (15 total - scroll down!)</h2>">>,
+        <<"<p style=\"opacity: 0.8; margin-bottom: 1.5rem;\">Scroll down, click an article, then come back. Your scroll position will be preserved!</p>">>,
+        <<"<div class=\"article-list\">">>,
+        render_article_list(Articles, LastViewedId),
+        <<"</div>">>,
+        <<"<h2 style=\"margin-top: 3rem;\">✨ Why Scroll Preservation Matters</h2>">>,
+        <<"<div class=\"info-box\">">>,
+        <<"<p><strong>Traditional page reloads</strong> lose your scroll position. Every navigation sends you back to the top.</p>">>,
+        <<"<p style=\"margin-top: 1rem;\"><strong>Traditional SPAs</strong> preserve scroll but render everything client-side (slow first paint, bad SEO).</p>">>,
+        <<"<p style=\"margin-top: 1rem;\"><strong>Switchback SSR</strong> gives you the best of both: server-rendered HTML on every request with preserved scroll state. ">>,
+        <<"Erlang generates fresh HTML, Switchback morphs it in smoothly without disrupting your position.</p>">>,
+        <<"<p style=\"margin-top: 1rem;\"><strong>Try it:</strong> Scroll to the bottom, click an article, then hit back. You'll return exactly where you were!</p>">>,
+        <<"</div>">>,
+        <<"</main>">>,
+        <<"</div>">>
+    ].
+
+render_article(Props, RenderCount) ->
+    #{article := Article} = Props,
+    #{
+        id := _Id,
+        title := Title,
+        author := Author,
+        date := Date,
+        content := Content,
+        views := Views,
+        tags := Tags
+    } = Article,
+
+    [
+        <<"<div>">>,
+        render_nav(),
+        <<"<main>">>,
+        render_demo_hint(RenderCount),
+        <<"<a href=\"/\" data-swbk class=\"back-link\">← Back to Home</a>">>,
+        <<"<article class=\"article-detail\">">>,
+        <<"<header class=\"article-header\">">>,
+        <<"<h1>">>, Title, <<"</h1>">>,
+        <<"<div class=\"article-meta\">">>,
+        <<"<span class=\"author\">By ">>, Author, <<"</span>">>,
+        <<"<span class=\"separator\">•</span>">>,
+        <<"<span class=\"date\">">>, Date, <<"</span>">>,
+        <<"<span class=\"separator\">•</span>">>,
+        <<"<span class=\"views\">">>, integer_to_binary(Views), <<" views</span>">>,
+        <<"</div>">>,
+        <<"<div class=\"article-tags\">">>,
+        render_tags(Tags),
+        <<"</div>">>,
+        <<"</header>">>,
+        <<"<div class=\"article-content\">">>,
+        Content,
+        <<"</div>">>,
+        <<"<div class=\"article-footer\">">>,
+        <<"<p><strong>🟣 Server-Side Rendered</strong> - This article was generated by Erlang and morphed into the DOM by Switchback. ">>,
+        <<"View count is managed by a gen_server process!</p>">>,
+        <<"</div>">>,
+        <<"</article>">>,
+        <<"</main>">>,
+        <<"</div>">>
+    ].
+
+render_about(Props, RenderCount) ->
+    #{version := Version, features := Features} = Props,
+
+    [
+        <<"<div>">>,
+        render_nav(),
+        <<"<main>">>,
+        render_demo_hint(RenderCount),
+        <<"<h1>ℹ️  About This Demo</h1>">>,
+        <<"<div class=\"terminal-box\">">>,
+        <<"Erlang Blog Demo v">>, Version, <<" - Powered by Switchback SSR">>,
+        <<"</div>">>,
+        <<"<h2>🎯 The Switchback Philosophy</h2>">>,
+        <<"<div class=\"info-box\">">>,
+        <<"<p>Switchback is an <strong>auditable, vanilla TypeScript library</strong> ">>,
+        <<"that unlocks the freedom to use <strong>any backend stack</strong> you want. ">>,
+        <<"No React. No complex framework. Just pure, readable TypeScript.</p>">>,
+        <<"</div>">>,
+        <<"<h2>🟣 Why This Recipe Uses Erlang</h2>">>,
+        <<"<div class=\"info-box\">">>,
+        <<"<p>This recipe showcases Erlang's <strong>actor model and server-side rendering</strong>. ">>,
+        <<"Articles are managed by a gen_server process that tracks view counts. ">>,
+        <<"The OTP supervision tree automatically restarts crashed processes. ">>,
+        <<"This demonstrates Switchback's flexibility to integrate with powerful backend technologies.</p>">>,
+        <<"<p style=\"margin-top: 1rem\"><strong>Key Features Demonstrated:</strong></p>">>,
+        <<"<ul style=\"margin-top: 0.5rem\">">>,
+        render_feature_list(Features),
+        <<"</ul>">>,
+        <<"</div>">>,
+        <<"<h2>🚀 Server-Side Rendering</h2>">>,
+        <<"<div class=\"info-box\">">>,
+        <<"<p>This demo showcases <strong>server-side HTML rendering</strong>. ">>,
+        <<"Instead of sending JSON and rendering on the client, Erlang generates complete HTML ">>,
+        <<"that Switchback morphs into the DOM. This provides:</p>">>,
+        <<"<ul style=\"margin-top: 0.5rem\">">>,
+        <<"<li>⚡ Instant first paint - no waiting for JavaScript</li>">>,
+        <<"<li>🔍 Better SEO - search engines see real content</li>">>,
+        <<"<li>📱 Works with JavaScript disabled</li>">>,
+        <<"<li>🎨 Server controls presentation logic</li>">>,
+        <<"<li>🔄 Smooth morphing transitions - no page flicker</li>">>,
+        <<"<li>✨ Preserved scroll position - navigate and come back to exactly where you were</li>">>,
+        <<"</ul>">>,
+        <<"<p style=\"margin-top: 1rem\">Navigate between pages and watch how smoothly Switchback ">>,
+        <<"morphs the server-rendered HTML. Click on articles to see view counts increment!</p>">>,
+        <<"</div>">>,
+        <<"<a href=\"/\" data-swbk class=\"back-link\">← Back to Home</a>">>,
+        <<"</main>">>,
+        <<"</div>">>
+    ].
+
+render_error(Props, RenderCount) ->
+    #{message := Message} = Props,
+
+    [
+        <<"<div>">>,
+        render_nav(),
+        <<"<main>">>,
+        render_demo_hint(RenderCount),
+        <<"<h1>❌ Error</h1>">>,
+        <<"<div class=\"terminal-box\">Error: ">>, Message, <<"</div>">>,
+        <<"<a href=\"/\" data-swbk class=\"back-link\">← Back to Home</a>">>,
+        <<"</main>">>,
+        <<"</div>">>
+    ].
+
+%%====================================================================
+%% Helper Functions
+%%====================================================================
+
+render_nav() ->
+    [
+        <<"<nav>">>,
+        <<"<div class=\"nav-content\">">>,
+        <<"<div>">>,
+        <<"<a href=\"/\" data-swbk>🟣 Home</a>">>,
+        <<"<a href=\"/about\" data-swbk>ℹ️  About</a>">>,
+        <<"</div>">>,
+        <<"<div class=\"nav-badge\">ACTOR MODEL + SSR</div>">>,
+        <<"</div>">>,
+        <<"</nav>">>
+    ].
+
+render_demo_hint(RenderCount) ->
+    RenderCountBin = integer_to_binary(RenderCount),
+
+    [
+        <<"<div class=\"demo-hint\">">>,
+        <<"<strong>🎯 Test Scroll Preservation:</strong><br>">>,
+        <<"<strong>1)</strong> Scroll down to article #10 or beyond<br>">>,
+        <<"<strong>2)</strong> Click any article to read it<br>">>,
+        <<"<strong>3)</strong> Use browser back button or click \"Back to Home\"<br>">>,
+        <<"<strong>4)</strong> Notice: You return to the <span class=\"hint-flash\">EXACT SAME SCROLL POSITION</span>!<br>">>,
+        <<"<strong>5)</strong> The article you just viewed is highlighted in orange<br>">>,
+        <<"<br>">>,
+        <<"<strong>What's happening:</strong> Erlang renders fresh HTML on every request (watch the render counter), ">>,
+        <<"but Switchback morphs it smoothly while preserving your scroll position, focus state, and marking what you've viewed.">>,
+        <<"<br><div class=\"render-counter\">">>,
+        <<"🟣 Server-Rendered by <strong>Erlang gen_server</strong> • ">>,
+        <<"<span class=\"counter-badge\">Render #">>, RenderCountBin, <<"</span>">>,
+        <<"</div>">>,
+        <<"</div>">>
+    ].
+
+render_stat_card(Value, Label) ->
+    [
+        <<"<div class=\"stat-card\">">>,
+        <<"<strong>">>, Value, <<"</strong>">>,
+        <<"<div>">>, Label, <<"</div>">>,
+        <<"</div>">>
+    ].
+
+render_feature_list([]) ->
+    [];
+render_feature_list([Feature | Rest]) ->
+    [
+        <<"<li>">>, Feature, <<"</li>">>,
+        render_feature_list(Rest)
+    ].
+
+render_article_list([], _LastViewedId) ->
+    <<"<p>No articles yet.</p>">>;
+render_article_list(Articles, LastViewedId) ->
+    [render_article_card(Article, LastViewedId) || Article <- Articles].
+
+render_article_card(Article, LastViewedId) ->
+    #{
+        id := Id,
+        title := Title,
+        author := Author,
+        date := Date,
+        summary := Summary,
+        views := Views,
+        tags := Tags
+    } = Article,
+
+    IdBin = integer_to_binary(Id),
+    ViewsBin = integer_to_binary(Views),
+
+    % Highlight only the last viewed article
+    IsLastViewed = LastViewedId =:= Id,
+    ViewedBadge = case IsLastViewed of
+        true -> <<"<span class=\"viewed-badge\">← Last viewed</span>">>;
+        false -> <<"">>
+    end,
+    RowClass = case IsLastViewed of
+        true -> <<"article-row viewed">>;
+        false -> <<"article-row">>
+    end,
+
+    [
+        <<"<div class=\"">>, RowClass, <<"\">">>,
+        <<"<div class=\"article-title\">">>,
+        <<"<a href=\"/articles/">>, IdBin, <<"\" data-swbk>">>, Title, <<"</a> ">>,
+        ViewedBadge,
+        <<"</div>">>,
+        <<"<div class=\"article-summary\">">>, Summary, <<"</div>">>,
+        <<"<div class=\"article-meta\">">>,
+        <<"<span class=\"author\">">>, Author, <<"</span>">>,
+        <<"<span class=\"separator\">•</span>">>,
+        <<"<span class=\"date\">">>, Date, <<"</span>">>,
+        <<"<span class=\"separator\">•</span>">>,
+        <<"<span class=\"views\">">>, ViewsBin, <<" views</span>">>,
+        <<"<span class=\"separator\">•</span>">>,
+        render_tags(Tags),
+        <<"<span class=\"separator\">•</span>">>,
+        <<"<a href=\"/articles/">>, IdBin, <<"\" data-swbk class=\"read-more\">Read more →</a>">>,
+        <<"</div>">>,
+        <<"</div>">>
+    ].
+
+render_tags([]) ->
+    [];
+render_tags(Tags) ->
+    [render_tag(Tag) || Tag <- Tags].
+
+render_tag(Tag) ->
+    [<<"<span class=\"tag\">">>, Tag, <<"</span>">>].

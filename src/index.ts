@@ -11,6 +11,7 @@ export interface Page {
   props: Record<string, any>;
   url: string;
   version?: string;
+  html?: string; // Server-rendered HTML for SSR
 }
 
 /** Navigation options */
@@ -137,6 +138,85 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
     });
   }
 
+  function morphElement(fromEl: Element, toEl: Element): void {
+    // Simple HTML morphing algorithm
+    // Efficiently updates DOM by reusing existing nodes when possible
+
+    // Update attributes
+    const fromAttrs = fromEl.attributes;
+    const toAttrs = toEl.attributes;
+
+    // Remove old attributes
+    for (let i = fromAttrs.length - 1; i >= 0; i--) {
+      const attr = fromAttrs[i];
+      if (!toEl.hasAttribute(attr.name)) {
+        fromEl.removeAttribute(attr.name);
+      }
+    }
+
+    // Set new attributes
+    for (let i = 0; i < toAttrs.length; i++) {
+      const attr = toAttrs[i];
+      if (fromEl.getAttribute(attr.name) !== attr.value) {
+        fromEl.setAttribute(attr.name, attr.value);
+      }
+    }
+
+    // Morph children
+    const fromChildren = Array.from(fromEl.childNodes);
+    const toChildren = Array.from(toEl.childNodes);
+
+    let fromIndex = 0;
+    let toIndex = 0;
+
+    while (toIndex < toChildren.length) {
+      const toNode = toChildren[toIndex];
+      const fromNode = fromChildren[fromIndex];
+
+      if (!fromNode) {
+        // Add new node
+        fromEl.appendChild(toNode.cloneNode(true));
+        toIndex++;
+        continue;
+      }
+
+      // Text nodes
+      if (toNode.nodeType === 3 && fromNode.nodeType === 3) {
+        if (fromNode.nodeValue !== toNode.nodeValue) {
+          fromNode.nodeValue = toNode.nodeValue;
+        }
+        fromIndex++;
+        toIndex++;
+        continue;
+      }
+
+      // Element nodes
+      if (toNode.nodeType === 1 && fromNode.nodeType === 1) {
+        const toEl = toNode as Element;
+        const fromEl = fromNode as Element;
+
+        if (toEl.tagName === fromEl.tagName) {
+          // Same tag, morph recursively
+          morphElement(fromEl, toEl);
+          fromIndex++;
+          toIndex++;
+          continue;
+        }
+      }
+
+      // Different types, replace
+      fromEl.replaceChild(toNode.cloneNode(true), fromNode);
+      fromIndex++;
+      toIndex++;
+    }
+
+    // Remove extra nodes
+    while (fromIndex < fromChildren.length) {
+      fromEl.removeChild(fromChildren[fromIndex]);
+      fromIndex++;
+    }
+  }
+
   async function swapPage(page: Page, options: VisitOptions): Promise<void> {
     if (swapInProgress) return;
     swapInProgress = true;
@@ -156,10 +236,31 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
     // Update history
     history[options.replace ? 'replaceState' : 'pushState']({ page: mergedPage }, '', mergedPage.url);
 
-    // Resolve component and render
-    const Component = await Promise.resolve(config.resolve(mergedPage.component));
     const el = document.querySelector('[data-swbk-app]');
-    if (el) config.setup({ el, App: Component, props: mergedPage.props });
+    if (!el) {
+      swapInProgress = false;
+      return;
+    }
+
+    // Handle server-rendered HTML or client-side component
+    if (mergedPage.html) {
+      // SSR: Morph server-rendered HTML into DOM
+      const template = document.createElement('template');
+      template.innerHTML = mergedPage.html.trim();
+      const newContent = template.content.firstElementChild;
+
+      if (newContent) {
+        if (el.firstElementChild) {
+          morphElement(el.firstElementChild, newContent);
+        } else {
+          el.appendChild(newContent);
+        }
+      }
+    } else {
+      // Client-side: Resolve component and render
+      const Component = await Promise.resolve(config.resolve(mergedPage.component));
+      config.setup({ el, App: Component, props: mergedPage.props });
+    }
 
     // Restore scroll position
     if (!options.preserveScroll) {
@@ -243,10 +344,15 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
   // Render initial page if provided
   if (currentPage) {
     history.replaceState({ page: currentPage }, '', currentPage.url);
-    Promise.resolve(config.resolve(currentPage.component)).then(Component => {
-      const el = document.querySelector('[data-swbk-app]');
-      if (el) config.setup({ el, App: Component, props: currentPage!.props });
-    });
+
+    const el = document.querySelector('[data-swbk-app]');
+    if (el && !currentPage.html) {
+      // Only render if not using SSR (SSR HTML is already in the DOM)
+      Promise.resolve(config.resolve(currentPage.component)).then(Component => {
+        config.setup({ el, App: Component, props: currentPage!.props });
+      });
+    }
+    // If currentPage.html exists, the server already rendered it - don't touch the DOM
   }
 
   return { visit, page, reload };
