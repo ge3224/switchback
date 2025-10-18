@@ -1,5 +1,10 @@
 # Switchback
 
+[![Version](https://img.shields.io/github/v/release/ge3224/switchback?color=blue)](https://github.com/ge3224/switchback)
+[![No Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/ge3224/switchback)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://img.shields.io/github/actions/workflow/status/ge3224/switchback/ci.yml?branch=main)](https://github.com/ge3224/switchback/actions)
+
 Build single-page apps with your preferred server stack. Zero dependencies, vendorable, and auditable.
 
 **Zero dependencies. Vendorable. Auditable. ~300 lines.**
@@ -28,7 +33,7 @@ Switchback lets you create fully client-side rendered SPAs while keeping your fa
 ### Via git submodule (recommended for vendoring)
 
 ```bash
-git submodule add https://github.com/yourusername/switchback vendor/switchback
+git submodule add https://github.com/ge3224/switchback vendor/switchback
 ```
 
 ### Via npm
@@ -41,16 +46,25 @@ npm install switchback
 
 ### Client Setup
 
-Works beautifully with [just-jsx](https://github.com/yourusername/just-jsx) and [simple-state](https://github.com/yourusername/simple-state):
-
 ```typescript
 import { newSwitchback } from './vendor/switchback/src/index.ts';
-import { createDomElement } from './vendor/just-jsx/src/index.ts';
 
 // Your page components
 const pages = {
-  'Home': (props: any) => <div><h1>{props.title}</h1></div>,
-  'Users/Show': (props: any) => <div><h1>{props.user.name}</h1></div>,
+  'Home': (props: any) => {
+    const div = document.createElement('div');
+    const h1 = document.createElement('h1');
+    h1.textContent = props.title;
+    div.appendChild(h1);
+    return div;
+  },
+  'Users/Show': (props: any) => {
+    const div = document.createElement('div');
+    const h1 = document.createElement('h1');
+    h1.textContent = props.user.name;
+    div.appendChild(h1);
+    return div;
+  },
 };
 
 // Initialize Switchback
@@ -140,27 +154,49 @@ Links and forms work automatically:
 
 ```typescript
 // Links - no special handling needed
-const UserList = ({ users }) => (
-  <div>
-    <h1>Users</h1>
-    {users.map(user => (
-      <a href={`/users/${user.id}`}>{user.name}</a>
-    ))}
-  </div>
-);
+const UserList = ({ users }) => {
+  const div = document.createElement('div');
+  const h1 = document.createElement('h1');
+  h1.textContent = 'Users';
+  div.appendChild(h1);
+
+  users.forEach(user => {
+    const a = document.createElement('a');
+    a.href = `/users/${user.id}`;
+    a.textContent = user.name;
+    div.appendChild(a);
+  });
+
+  return div;
+};
 
 // Forms - automatically intercepted
-const UserEdit = ({ user }) => (
-  <form action={`/users/${user.id}`} method="post">
-    <input name="name" value={user.name} />
-    <button type="submit">Save</button>
-  </form>
-);
+const UserEdit = ({ user }) => {
+  const form = document.createElement('form');
+  form.action = `/users/${user.id}`;
+  form.method = 'post';
+
+  const input = document.createElement('input');
+  input.name = 'name';
+  input.value = user.name;
+
+  const button = document.createElement('button');
+  button.type = 'submit';
+  button.textContent = 'Save';
+
+  form.appendChild(input);
+  form.appendChild(button);
+  return form;
+};
 
 // Opt-out with data-no-swizzle
-const ExternalLink = () => (
-  <a href="https://example.com" data-no-swizzle>External</a>
-);
+const ExternalLink = () => {
+  const a = document.createElement('a');
+  a.href = 'https://example.com';
+  a.setAttribute('data-no-swizzle', '');
+  a.textContent = 'External';
+  return a;
+};
 ```
 
 ## API
@@ -259,28 +295,10 @@ visit('/users/123', {
 visit('/page', { preserveScroll: true });
 
 // Use data attributes
-<a href="/page" data-preserve-scroll>Link</a>
-```
-
-### Integration with simple-state
-
-```typescript
-import { newSimpleState } from './vendor/simple-state/src/index.ts';
-
-const flashState = newSimpleState({ message: null });
-
-const app = newSwitchback({
-  resolve: (name) => pages[name],
-  setup: ({ el, App, props }) => {
-    // Update shared state on page load
-    if (props.flash) {
-      flashState.set({ message: props.flash });
-    }
-
-    el.innerHTML = '';
-    el.appendChild(App(props));
-  },
-});
+const link = document.createElement('a');
+link.href = '/page';
+link.setAttribute('data-preserve-scroll', '');
+link.textContent = 'Link';
 ```
 
 ## Examples
@@ -311,7 +329,7 @@ Each demo includes Docker setup for easy testing.
 
 Switchback draws inspiration from [Inertia.js](https://inertiajs.com) but is designed specifically for vanilla TypeScript projects. Key differences:
 
-- **No framework dependency** - Works with just-jsx instead of requiring React/Vue/Svelte
+- **No framework dependency** - Works with vanilla DOM or any rendering approach
 - **Minimal** - ~300 lines you can audit vs thousands
 - **Vendorable** - Designed to be vendored via git submodules
 - **Server-agnostic** - Works with any backend that can return JSON
