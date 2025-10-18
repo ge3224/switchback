@@ -1,6 +1,6 @@
 # Erlang Demo - Switchback SSR Integration
 
-A real-time chat application showcasing **Erlang/OTP's Actor Model** with **Server-Side Rendering (SSR)**. Experience true message-passing concurrency, fault tolerance, and instant first-paint rendering - combining the best of both worlds!
+A blog article viewing application showcasing **Erlang/OTP's Actor Model** with **Server-Side Rendering (SSR)**. Experience stateful article management, view tracking, and instant first-paint rendering - combining the best of both worlds!
 
 ## 🚀 What Makes This Demo Special?
 
@@ -17,12 +17,12 @@ This is similar to **Phoenix LiveView** or **HTMX**, but without WebSocket overh
 ## What's Included
 
 - **src/switchback_chat.erl** - Main application entry point
-- **src/chat_room.erl** - Chat room manager using gen_server (Actor Model)
-- **src/ws_handler.erl** - WebSocket handler (each connection is a process)
+- **src/article_manager.erl** - Article manager using gen_server (Actor Model)
 - **src/switchback_chat_sup.erl** - OTP supervisor for fault tolerance
-- **src/html_renderer.erl** - **NEW!** Server-side HTML rendering module
+- **src/html_renderer.erl** - Server-side HTML rendering module
 - **src/page_handler.erl** - Returns HTML fragments for Switchback morphing
-- **app.ts** - Minimal client (90% smaller!) - just Switchback + WebSocket
+- **src/static_handler.erl** - Serves static files (JavaScript bundle)
+- **app.ts** - Minimal client - just Switchback for navigation and article tracking
 - **vite.config.ts** - Bundles app.ts + Switchback into single JS file
 - **Docker setup** - Multi-stage build with Erlang/OTP 26
 
@@ -111,15 +111,15 @@ Think of actors like people in an office:
 
 ## How This Demo Works
 
-1. **OTP Supervisor** starts the chat room gen_server
-2. **User connects via WebSocket** → New Erlang process spawned
-3. **User joins chat** → Registered with chat_room process
-4. **User sends message** → Message passed to chat_room
-5. **chat_room broadcasts** → Sends message to all user processes via `!` operator
-6. **Each user process** → Forwards to WebSocket client
-7. **User disconnects/crashes** → Process dies, supervisor cleans up
+1. **OTP Supervisor** starts the article_manager gen_server
+2. **User navigates to homepage** → article_manager returns list of all articles
+3. **User clicks an article** → Switchback intercepts, fetches page data
+4. **Server renders HTML** → article_manager increments view count, html_renderer generates HTML
+5. **Switchback morphs DOM** → New article page appears without page reload
+6. **View tracking** → Client-side code highlights last viewed article
+7. **Navigation state** → All managed server-side with instant rendering
 
-**The magic**: Each user is a completely independent process. If one user's process crashes, it doesn't affect others!
+**The magic**: The gen_server maintains article state (view counts, render counts) while Switchback provides smooth SPA navigation with server-rendered HTML!
 
 ## Try It Out
 
@@ -136,17 +136,17 @@ Open http://localhost:8000
 
 To run this demo with a local Erlang installation, see the [Erlang downloads page](https://www.erlang.org/downloads).
 
-## Try the Real-Time Chat
+## Try the Article Blog
 
-1. Open http://localhost:8000 in multiple browser windows
-2. Click "Join Chat Room"
-3. Choose different usernames in each window
-4. Send messages and see them appear **instantly** in all windows
-5. Watch the online users list update in **real-time**
-6. Close a browser tab and see the user disappear from the list
-7. Check the server logs to see Erlang processes being created/destroyed!
+1. Open http://localhost:8000 in your browser
+2. View the list of 15 articles about Erlang and OTP
+3. Click on any article to view its full content
+4. Notice the instant navigation without page reloads
+5. Watch the view counter increment for each article
+6. Go back to the homepage and see your last viewed article highlighted
+7. Check the server logs to see Erlang rendering HTML and tracking views!
 
-The beauty: Each browser tab is a separate Erlang process communicating via message passing!
+The beauty: Server renders complete HTML, Switchback morphs it seamlessly, and gen_server manages all state!
 
 ## OTP Architecture
 
@@ -154,63 +154,76 @@ The beauty: Each browser tab is a separate Erlang process communicating via mess
 
 ```
 switchback_chat_sup (supervisor)
-    └── chat_room (gen_server)
-            ├── Monitors user process 1
-            ├── Monitors user process 2
-            └── Monitors user process N
+    └── article_manager (gen_server)
+            ├── Manages article data
+            ├── Tracks view counts
+            └── Tracks render statistics
 ```
 
-If the chat_room crashes, the supervisor **automatically restarts it**. This is the "let it crash" philosophy - don't write defensive code, let supervisors handle failures!
+If the article_manager crashes, the supervisor **automatically restarts it**. This is the "let it crash" philosophy - don't write defensive code, let supervisors handle failures!
 
 ### Process Structure
 
 ```
-User 1 Browser
-    ↓ WebSocket
-ws_handler Process 1 ──┐
-    ↓ Erlang message    │
-                        ├──→ chat_room gen_server ←── Manages all users
-ws_handler Process 2 ──┤         ↓
-    ↑ Erlang message    │    Broadcasts via !
-User 2 Browser          │         ↓
-    ↑ WebSocket        ─┘    All processes receive message
+Browser
+    ↓ HTTP Request (Switchback intercepts links)
+    ↓
+page_handler ──→ article_manager (gen_server)
+    ↑                     ↓
+    │         Returns article data + stats
+    │                     ↓
+    ├── html_renderer renders HTML
+    │                     ↓
+    └── Returns JSON with HTML to browser
+                          ↓
+            Switchback morphs HTML into DOM
 ```
 
-Each `ws_handler` is a separate process. When a message arrives:
-1. Process sends message to `chat_room` via `gen_server:cast`
-2. `chat_room` receives it in `handle_cast` callback
-3. `chat_room` sends message to all user processes via `Pid ! Message`
-4. Each process receives it in `websocket_info` callback
-5. WebSocket forwards to browser
+When a user navigates:
+1. Browser sends HTTP request with `X-Switchback` header
+2. `page_handler` receives request and calls `article_manager`
+3. `article_manager` (gen_server) updates view count via `handle_cast`
+4. `article_manager` returns article data via `handle_call`
+5. `html_renderer` generates HTML from article data
+6. JSON response with HTML sent to browser
+7. Switchback morphs HTML into existing DOM
 
 ### Code Walkthrough
 
-**Creating an actor (Erlang process):**
+**Fetching articles (synchronous call):**
 
 ```erlang
-% In ws_handler.erl - when user joins
-handle_join(Username, State) ->
-    case chat_room:join(Username, self()) of  % self() = current process PID
-        {ok, Users} -> ...
+% In page_handler.erl - getting all articles
+handle_route(<<"/">>, <<"GET">>, _) ->
+    {ok, Articles} = article_manager:get_all_articles(),
+    {ok, Stats} = article_manager:get_stats(),
+    Props = #{articles => Articles, stats => Stats},
+    ...
 ```
 
-**Sending a message (async):**
+**Incrementing view count (async cast):**
 
 ```erlang
-% In chat_room.erl - broadcasting to all users
-broadcast(Message, Users, ExcludePid) ->
-    maps:foreach(fun(_Username, Pid) ->
-        Pid ! {chat_event, Message}  % ! is the send operator
-    end, Users).
+% In article_manager.erl - increment without blocking caller
+handle_cast({increment_views, Id}, State) ->
+    #state{articles = Articles, total_views = TotalViews} = State,
+    case maps:find(Id, Articles) of
+        {ok, Article} ->
+            UpdatedArticle = Article#article{views = Article#article.views + 1},
+            NewArticles = maps:put(Id, UpdatedArticle, Articles),
+            {noreply, State#state{articles = NewArticles, total_views = TotalViews + 1}}
+    end.
 ```
 
-**Receiving a message:**
+**Rendering HTML:**
 
 ```erlang
-% In ws_handler.erl - receiving broadcasted message
-websocket_info({chat_event, Event}, State) ->
-    Json = jsx:encode(Event),
-    {reply, {text, Json}, State}.
+% In html_renderer.erl - server-side rendering
+render_page(<<"Home">>, Props, RenderCount) ->
+    Articles = maps:get(articles, Props),
+    [<<"<div class='home-page'>">>,
+     render_article_list(Articles),
+     <<"</div>">>].
 ```
 
 **Supervision (fault tolerance):**
@@ -220,8 +233,8 @@ websocket_info({chat_event, Event}, State) ->
 init([]) ->
     ChildSpecs = [
         #{
-            id => chat_room,
-            start => {chat_room, start_link, []},
+            id => article_manager,
+            start => {article_manager, start_link, []},
             restart => permanent,  % Always restart if it crashes!
             shutdown => 5000,
             type => worker
@@ -232,29 +245,31 @@ init([]) ->
 
 ## Key Features Demonstrated
 
-- ✅ **Actor Model** - Each user is an independent process
-- ✅ **Message Passing** - Processes communicate via `!` operator
-- ✅ **OTP gen_server** - Generic server behavior for chat_room
+- ✅ **Actor Model** - article_manager gen_server manages state
+- ✅ **OTP gen_server** - Generic server behavior for article management
 - ✅ **OTP Supervision** - Automatic restart on crashes
-- ✅ **Process Monitoring** - Detect when user processes die
-- ✅ **WebSocket per Process** - Each connection is a lightweight process
-- ✅ **Real-time Broadcasting** - Efficient message distribution
-- ✅ **Fault Isolation** - One crashed user doesn't affect others
-- ✅ **Interactive Switchback UI** - Purple theme for Erlang!
+- ✅ **Server-Side Rendering** - Complete HTML generated by Erlang
+- ✅ **HTML Morphing** - Switchback efficiently updates DOM
+- ✅ **State Management** - View counts and stats tracked server-side
+- ✅ **Instant First Paint** - SEO-friendly, works without JavaScript
+- ✅ **Smooth Navigation** - SPA experience with server control
+- ✅ **View Tracking** - Client-side enhancement for last viewed article
+- ✅ **Beautiful UI** - Purple theme showcasing Erlang!
 
 ## File Structure
 
 ```
 erlang/
 ├── src/
-│   ├── switchback_chat.erl        # Main application
+│   ├── switchback_chat.erl        # Main application entry point
 │   ├── switchback_chat_app.erl    # OTP application callback
 │   ├── switchback_chat_sup.erl    # OTP supervisor
-│   ├── chat_room.erl              # Chat room gen_server (actor)
-│   ├── ws_handler.erl             # WebSocket handler
+│   ├── article_manager.erl        # Article manager gen_server
+│   ├── html_renderer.erl          # Server-side HTML rendering
 │   ├── page_handler.erl           # Switchback page routing
-│   ├── stats_handler.erl          # Stats API
-│   └── users_handler.erl          # Users API
+│   ├── static_handler.erl         # Static file serving
+│   ├── stats_handler.erl          # Stats API endpoint
+│   └── users_handler.erl          # Users API endpoint
 ├── app.ts                          # Frontend Switchback app
 ├── vite.config.ts                  # Vite bundler config
 ├── package.json                    # Build scripts
@@ -309,41 +324,37 @@ rest_for_one    % Restart failed + all started after it
 
 ## Extending This Example
 
-### Add Private Messages
+### Add Article Comments
 
-In `chat_room.erl`:
+In `article_manager.erl`:
 
 ```erlang
-handle_cast({private_message, From, To, Message}, State) ->
-    #state{users = Users} = State,
-    case maps:find(To, Users) of
-        {ok, ToPid} ->
-            MsgObj = #{type => private_message, from => From, message => Message},
-            ToPid ! {chat_event, MsgObj};
-        error ->
-            ok
-    end,
-    {noreply, State}.
+-record(state, {
+    articles = #{},
+    comments = #{},  % #{ArticleId => [Comment]}
+    ...
+}).
+
+handle_cast({add_comment, ArticleId, Comment}, State) ->
+    #state{comments = Comments} = State,
+    ArticleComments = maps:get(ArticleId, Comments, []),
+    NewComments = maps:put(ArticleId, [Comment | ArticleComments], Comments),
+    {noreply, State#state{comments = NewComments}}.
 ```
 
-### Add Chat Rooms
+### Add Article Search
 
-Create multiple `chat_room` processes, one per room:
+Implement full-text search across articles:
 
 ```erlang
-% Supervisor spawns multiple chat rooms
-rooms() -> [
-    {room_1, "General"},
-    {room_2, "Random"},
-    {room_3, "Tech Talk"}
-].
-
-init([]) ->
-    ChildSpecs = [
-        chat_room_spec(RoomId, RoomName)
-        || {RoomId, RoomName} <- rooms()
-    ],
-    {ok, {SupFlags, ChildSpecs}}.
+handle_call({search_articles, Query}, _From, State) ->
+    #state{articles = Articles} = State,
+    Results = maps:filter(fun(_Id, Article) ->
+        TitleMatch = string:find(Article#article.title, Query) =/= nomatch,
+        ContentMatch = string:find(Article#article.content, Query) =/= nomatch,
+        TitleMatch orelse ContentMatch
+    end, Articles),
+    {reply, {ok, maps:values(Results)}, State}.
 ```
 
 ### Add Persistence
@@ -351,62 +362,63 @@ init([]) ->
 Use Mnesia (Erlang's distributed database):
 
 ```erlang
-% In chat_room.erl
--record(chat_message, {id, username, message, timestamp}).
+% In article_manager.erl
+-record(article_record, {id, title, author, date, summary, content, views, tags}).
 
 init([]) ->
-    mnesia:create_table(chat_message,
-        [{attributes, record_info(fields, chat_message)}]),
-    {ok, #state{}}.
+    mnesia:create_table(article_record,
+        [{attributes, record_info(fields, article_record)},
+         {disc_copies, [node()]}]),
 
-handle_cast({message, Username, Message}, State) ->
-    % Store in Mnesia
-    mnesia:dirty_write(#chat_message{
-        id = make_ref(),
-        username = Username,
-        message = Message,
-        timestamp = erlang:system_time(second)
-    }),
-    % ... broadcast ...
+    % Load articles from Mnesia or initialize with defaults
+    Articles = load_articles_from_mnesia(),
+    {ok, #state{articles = Articles}}.
+
+save_article(Article) ->
+    mnesia:dirty_write(#article_record{
+        id = Article#article.id,
+        title = Article#article.title,
+        views = Article#article.views,
+        ...
+    }).
 ```
 
 ### Add Distributed Nodes
 
-Run chat on multiple servers:
+Run the blog on multiple servers with shared article state:
 
 ```bash
 # Node 1
-erl -name chat1@server1.com -setcookie mysecret
+erl -name blog1@server1.com -setcookie mysecret
 
 # Node 2
-erl -name chat2@server2.com -setcookie mysecret
+erl -name blog2@server2.com -setcookie mysecret
 
 # Connect nodes
-(chat2@server2.com)> net_adm:ping('chat1@server1.com').
+(blog2@server2.com)> net_adm:ping('blog1@server1.com').
 pong
 
-# Now processes can communicate across machines!
+# Now article_manager state can be synchronized across machines!
+# Use Mnesia replication for distributed article storage
 ```
 
-### Add Rate Limiting
+### Add Article Ratings
 
-Prevent spam by tracking message frequency:
+Track user ratings for articles:
 
 ```erlang
 -record(state, {
-    users = #{},
-    rate_limit = #{}  % #{Username => {Count, WindowStart}}
+    articles = #{},
+    ratings = #{}  % #{ArticleId => {TotalRating, Count}}
 }).
 
-handle_cast({message, Username, Message}, State) ->
-    case check_rate_limit(Username, State) of
-        ok ->
-            broadcast(Message, State),
-            {noreply, update_rate_limit(Username, State)};
-        {error, rate_limited} ->
-            % Notify user they're rate limited
-            {noreply, State}
-    end.
+handle_cast({rate_article, ArticleId, Rating}, State) ->
+    #state{ratings = Ratings} = State,
+    {Total, Count} = maps:get(ArticleId, Ratings, {0, 0}),
+    NewRatings = maps:put(ArticleId, {Total + Rating, Count + 1}, Ratings),
+    AvgRating = (Total + Rating) / (Count + 1),
+    io:format("Article ~p rated: ~.2f/5.0~n", [ArticleId, AvgRating]),
+    {noreply, State#state{ratings = NewRatings}}.
 ```
 
 ## Performance Notes
@@ -425,27 +437,27 @@ Want to see "let it crash" in action?
 
 1. Start the server
 2. Open the Erlang shell
-3. Find the chat_room process:
+3. Find the article_manager process:
 
 ```erlang
-whereis(chat_room).
+whereis(article_manager).
 % Returns: <0.123.0>
 ```
 
 4. Kill it manually:
 
 ```erlang
-exit(whereis(chat_room), kill).
+exit(whereis(article_manager), kill).
 ```
 
 5. **Watch it restart automatically!**
 
 ```erlang
-whereis(chat_room).
+whereis(article_manager).
 % Returns: <0.456.0> (different PID!)
 ```
 
-The supervisor detected the crash and restarted the process. Users will reconnect automatically!
+The supervisor detected the crash and restarted the process. Article data will be reinitialized, and the application continues working!
 
 ## Troubleshooting
 
@@ -459,20 +471,20 @@ The supervisor detected the crash and restarted the process. Users will reconnec
 - Install from https://www.erlang.org/downloads
 - Check rebar3 is installed: `rebar3 version`
 
-**WebSocket connection failed?**
+**HTTP requests failing?**
 - Check server logs for errors
 - Verify port 8000 is not in use: `lsof -i :8000` or `netstat -an | grep 8000`
-- Check firewall isn't blocking WebSocket connections
+- Ensure Cowboy HTTP server started properly
 
 **Docker issues?**
 - Make sure port 8000 is available
 - Rebuild with `docker-compose build --no-cache`
 - Check Docker has enough memory allocated
 
-**Messages not broadcasting?**
+**Articles not loading?**
 - Check Erlang shell output for process errors
-- Verify chat_room is running: `whereis(chat_room).`
-- Check user count: `gen_server:call(chat_room, get_users).`
+- Verify article_manager is running: `whereis(article_manager).`
+- Check article count: `gen_server:call(article_manager, get_stats).`
 
 ## Security Considerations
 
@@ -480,19 +492,19 @@ This is a **demo application** and should not be used in production without addi
 
 - ⚠️ No authentication or authorization
 - ⚠️ No input validation or sanitization
-- ⚠️ No rate limiting (spam protection)
-- ⚠️ No message persistence (data lost on restart)
+- ⚠️ No rate limiting on view counts
+- ⚠️ No article persistence (data lost on restart)
 - ⚠️ No HTTPS/TLS support
-- ⚠️ No protection against malicious WebSocket clients
+- ⚠️ No protection against malicious clients
 
 For production, add:
 - User authentication (JWT, OAuth, etc.)
 - Input sanitization to prevent XSS
-- Rate limiting per user
-- Message persistence (Mnesia, PostgreSQL, etc.)
+- Rate limiting on API endpoints
+- Article persistence (Mnesia, PostgreSQL, etc.)
 - TLS/SSL encryption
-- WebSocket message validation
-- User permissions and roles
+- Content Security Policy (CSP)
+- User permissions for article management
 - Logging and monitoring
 - Process limits to prevent resource exhaustion
 
@@ -517,9 +529,9 @@ Perfect for building massively concurrent, fault-tolerant systems!
 - **Zig Demo**: Modern systems programming with manual memory management
 - **C Demo**: Low-level HTTP server with optimistic updates
 - **Rust Demo**: Memory safety with embedded database
-- **Erlang Demo**: Actor model with message passing and fault tolerance
+- **Erlang Demo**: Actor model with server-side HTML rendering and fault tolerance
 
-Each demonstrates different Switchback features with different language paradigms. **Erlang's actor model and fault tolerance are unique** - perfect for chat, real-time collaboration, and distributed systems.
+Each demonstrates different Switchback features with different language paradigms. **Erlang's SSR with HTML morphing is unique** - perfect for SEO-friendly, fast-loading web applications with server-controlled state management.
 
 ## Learn More About Erlang/OTP
 
@@ -533,14 +545,14 @@ Erlang's concurrency model is one of the best for distributed systems - master i
 
 ## Next Steps
 
-Try modifying the demoto:
-1. Add private messaging between users
-2. Create multiple chat rooms
-3. Add message persistence with Mnesia
-4. Implement typing indicators
-5. Add emoji reactions to messages
+Try modifying the demo to:
+1. Add article comments with real-time updates
+2. Implement article search functionality
+3. Add article persistence with Mnesia
+4. Create article categories and filtering
+5. Add user ratings for articles
 6. Create a distributed cluster across multiple nodes
-7. Add admin commands (kick, ban, mute)
-8. Implement message search and history
+7. Add article authoring and editing
+8. Implement article recommendations based on view history
 
-Have fun exploring the Actor Model with Erlang and Switchback!
+Have fun exploring Server-Side Rendering with Erlang and Switchback!

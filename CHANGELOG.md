@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deno - TypeScript type sharing between client and server
   - Go - Concurrent worker pools with true parallelism
   - Rust - Embedded SQLite database with type safety
-  - Erlang - Actor model with real-time chat
+  - Erlang - Server-side rendering with HTML morphing and gen_server state management
   - Zig - Blazingly fast with zero dependencies
   - C - Optimistic updates for instant UX
   - C# - .NET integration

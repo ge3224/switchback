@@ -16,7 +16,7 @@ See [examples/demos/](examples/demos/) for full-stack integration examples:
 - **C** - Optimistic updates for instant UX
 - **C#** - .NET minimal APIs with dependency injection
 - **Deno** - TypeScript type sharing between client and server
-- **Erlang** - Actor model with real-time chat
+- **Erlang** - Server-side rendering with HTML morphing and gen_server state management
 - **Go** - Concurrent worker pools with true parallelism
 - **PHP** - Vanilla PHP with no framework dependencies
 - **Rust** - Embedded SQLite database with type safety
