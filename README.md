@@ -36,12 +36,6 @@ Switchback lets you create fully client-side rendered SPAs while keeping your fa
 git submodule add https://github.com/ge3224/switchback vendor/switchback
 ```
 
-### Via npm
-
-```bash
-npm install switchback
-```
-
 ## Usage
 
 ### Client Setup
