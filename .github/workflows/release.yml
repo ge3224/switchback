@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Run type check
+        run: pnpm type-check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Create tarball
+        run: tar -czf switchback-dist.tar.gz dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: switchback-dist.tar.gz
+          generate_release_notes: true
