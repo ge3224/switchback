@@ -18,8 +18,8 @@ RUN pnpm install
 
 # Copy demo files
 WORKDIR /app
-COPY examples/recipes/erlang/package.json examples/recipes/erlang/vite.config.ts examples/recipes/erlang/.npmrc ./
-COPY examples/recipes/erlang/app.ts ./
+COPY examples/demos/erlang/package.json examples/demos/erlang/vite.config.ts examples/demos/erlang/.npmrc ./
+COPY examples/demos/erlang/app.ts ./
 
 # Copy Switchback source
 COPY src /workspace/src
@@ -42,8 +42,8 @@ RUN apk add --no-cache git && \
     mv rebar3 /usr/local/bin/
 
 # Copy Erlang source
-COPY examples/recipes/erlang/rebar.config ./
-COPY examples/recipes/erlang/src ./src
+COPY examples/demos/erlang/rebar.config ./
+COPY examples/demos/erlang/src ./src
 
 # Fetch dependencies and compile
 RUN rebar3 get-deps

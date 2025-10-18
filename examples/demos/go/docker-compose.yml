@@ -1,14 +1,16 @@
 version: '3.8'
 
 services:
-  zig:
-    container_name: switchback_zig
-    image: switchback-zig:latest
+  go:
+    container_name: switchback_go
+    image: switchback-go:latest
     build:
       context: ../../..
-      dockerfile: examples/recipes/zig/Dockerfile
+      dockerfile: examples/demos/go/Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      - GOMAXPROCS=4
     # Note: dist/ is NOT mounted - it's baked into the image
     # For development with hot reload, build locally and uncomment:
     # volumes:

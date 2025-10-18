@@ -1,4 +1,4 @@
-# C Recipe - Switchback Integration
+# C Demo - Switchback Integration
 
 A minimal example showing how to integrate Switchback with a classic C HTTP server. Demonstrates **optimistic updates** for instant UI feedback!
 
@@ -19,7 +19,7 @@ Optimistic updates are a UI pattern where you update the interface **immediately
 - 🔄 Graceful rollback - revert if server fails
 - 📱 Essential for mobile apps with spotty connections
 
-### How It Works in This Recipe:
+### How It Works in This Demo:
 1. User adds a todo
 2. UI updates **immediately** (optimistic todo shown with dashed border)
 3. Request sent to C backend
@@ -41,7 +41,7 @@ If the server fails, the optimistic update is rolled back and an error is shown.
 Build the bundled client app:
 
 ```bash
-cd examples/recipes/c
+cd examples/demos/c
 
 # Install dependencies (uses parent's node_modules for vite/typescript)
 pnpm install --dir ../../../
@@ -77,7 +77,7 @@ gcc -o server server.c -pthread -O2 -Wall && ./server
 Docker will automatically build everything:
 
 ```bash
-# From examples/recipes/c directory
+# From examples/demos/c directory
 docker-compose up
 
 # Or build first, then run
@@ -239,7 +239,7 @@ For production, remove these delays entirely.
 ## Troubleshooting
 
 **App not loading?**
-- Make sure you've run `pnpm build` in the recipe directory
+- Make sure you've run `pnpm build` in the demo directory
 - Check that `dist/app.js` exists
 - Check browser console for import errors
 
@@ -299,7 +299,7 @@ For production, add:
 
 ## Why C?
 
-This recipe demonstrates Switchback with a systems programming language:
+This demodemonstrates Switchback with a systems programming language:
 - **Performance**: Native compiled code with minimal overhead
 - **Portability**: Runs on virtually any platform
 - **Control**: Direct memory management and system access
@@ -308,11 +308,11 @@ This recipe demonstrates Switchback with a systems programming language:
 
 Perfect for high-performance APIs, embedded systems, or learning systems programming!
 
-## Comparison with Other Recipes
+## Comparison with Other Demos
 
-- **PHP Recipe**: Shows basic navigation with a scripting language
-- **Zig Recipe**: Shows modern systems programming with compile-time safety and form handling
-- **C Recipe**: Shows classic systems programming with **optimistic updates** for instant UX
+- **PHP Demo**: Shows basic navigation with a scripting language
+- **Zig Demo**: Shows modern systems programming with compile-time safety and form handling
+- **C Demo**: Shows classic systems programming with **optimistic updates** for instant UX
 
 All three demonstrate different Switchback features with different language paradigms and trade-offs.
 

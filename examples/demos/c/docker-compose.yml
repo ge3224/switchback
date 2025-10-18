@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  rust:
-    container_name: switchback_rust
-    image: switchback-rust:latest
+  c:
+    container_name: switchback_c
+    image: switchback-c:latest
     build:
       context: ../../..
-      dockerfile: examples/recipes/rust/Dockerfile
+      dockerfile: examples/demos/c/Dockerfile
     ports:
       - "8000:8000"
     # Note: dist/ is NOT mounted - it's baked into the image

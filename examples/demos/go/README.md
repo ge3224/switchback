@@ -1,4 +1,4 @@
-# Go Recipe - Switchback Integration
+# Go Demo - Switchback Integration
 
 A powerful example showing how to integrate Switchback with Go's **true concurrency** model. Demonstrates a **concurrent worker pool** with goroutines processing CPU-intensive tasks in parallel - something **impossible with JavaScript's single-threaded model**!
 
@@ -45,7 +45,7 @@ Number 4: [██████████] 2.2s ⎦
 Total: ~2.4 seconds (4x faster!)
 ```
 
-## How This Recipe Works
+## How This Demo Works
 
 1. **4 Worker Goroutines**: Continuously listen on a job channel
 2. **Job Channel**: Buffered channel (queue) holds up to 100 pending jobs
@@ -66,7 +66,7 @@ Total: ~2.4 seconds (4x faster!)
 Build the client app:
 
 ```bash
-cd examples/recipes/go
+cd examples/demos/go
 
 # Install dependencies (uses parent's node_modules for vite/typescript)
 pnpm install --dir ../../../
@@ -103,7 +103,7 @@ air
 Docker will automatically build everything:
 
 ```bash
-# From examples/recipes/go directory
+# From examples/demos/go directory
 docker-compose up
 
 # Or build first, then run
@@ -354,7 +354,7 @@ Watch the workers process all 4 jobs **at the same time**!
 ## Troubleshooting
 
 **App not loading?**
-- Make sure you've run `pnpm build` in the recipe directory
+- Make sure you've run `pnpm build` in the demo directory
 - Check that `dist/app.js` exists
 - Check browser console for import errors
 
@@ -403,7 +403,7 @@ For production, add:
 
 ## Why Go?
 
-This recipe demonstrates Switchback with a systems programming language optimized for concurrency:
+This demodemonstrates Switchback with a systems programming language optimized for concurrency:
 
 - **Goroutines**: Lightweight, efficient concurrency primitives
 - **Channels**: Safe communication between concurrent tasks
@@ -414,12 +414,12 @@ This recipe demonstrates Switchback with a systems programming language optimize
 
 Perfect for building high-performance backends that need true parallelism!
 
-## Comparison with Other Recipes
+## Comparison with Other Demos
 
-- **PHP Recipe**: Shows basic navigation with a scripting language
-- **Zig Recipe**: Shows modern systems programming with form handling
-- **C Recipe**: Shows low-level programming with optimistic updates
-- **Go Recipe**: Shows **true concurrency** with goroutines and channels
+- **PHP Demo**: Shows basic navigation with a scripting language
+- **Zig Demo**: Shows modern systems programming with form handling
+- **C Demo**: Shows low-level programming with optimistic updates
+- **Go Demo**: Shows **true concurrency** with goroutines and channels
 
 Each demonstrates different Switchback features with different language paradigms. Go's concurrency model is unique and powerful for CPU-bound workloads.
 
@@ -435,7 +435,7 @@ Go's concurrency model is one of its best features - master it to build truly sc
 
 ## Next Steps
 
-Try modifying the recipe to:
+Try modifying the demoto:
 1. Add different types of CPU-intensive jobs (hashing, encoding, etc.)
 2. Implement a priority queue for job scheduling
 3. Add WebSocket support for real-time updates without polling

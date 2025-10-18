@@ -1,6 +1,6 @@
 # Switchback Examples
 
-Interactive examples and recipes demonstrating Switchback's single-page app features.
+Interactive examples and demosdemonstrating Switchback's single-page app features.
 
 ## Quick Start
 
@@ -24,21 +24,21 @@ The main example at http://localhost:5173/ demonstrates:
 - **Multiple Pages**: Home, Users list, User detail, About
 - **Instant Navigation**: SPA speed with server-side routing patterns
 
-### Backend Recipes
+### Backend Demos
 
 Real-world integration examples with different server stacks:
 
-#### 📁 `recipes/php/` - Vanilla PHP
+#### 📁 `demos/php/` - Vanilla PHP
 
 A minimal PHP example with no framework dependencies. Demonstrates **basic navigation** with link interception.
 
 ```bash
 # Option 1: PHP built-in server
-cd recipes/php
+cd demos/php
 php -S localhost:8000
 
 # Option 2: Docker
-cd recipes/php
+cd demos/php
 docker-compose up
 ```
 
@@ -51,22 +51,22 @@ Open http://localhost:8000
 - Link navigation without page reloads
 - Visual indicators showing persistent vs dynamic content
 
-See [`recipes/php/README.md`](recipes/php/README.md) for details.
+See [`demos/php/README.md`](demos/php/README.md) for details.
 
-#### ⚡ `recipes/zig/` - Zig HTTP Server
+#### ⚡ `demos/zig/` - Zig HTTP Server
 
 A blazingly fast Zig example with zero external dependencies. Demonstrates **form handling** with POST requests.
 
 ```bash
 # Option 1: Local (requires Zig 0.13+)
-cd recipes/zig
+cd demos/zig
 pnpm install --dir ../../../
 pnpm build
 zig build-exe server.zig -O ReleaseFast
 ./server
 
 # Option 2: Docker (recommended)
-cd recipes/zig
+cd demos/zig
 docker-compose up
 ```
 
@@ -80,7 +80,7 @@ Open http://localhost:8000
 - Dark terminal-inspired theme
 - Zero runtime dependencies
 
-See [`recipes/zig/README.md`](recipes/zig/README.md) for details.
+See [`demos/zig/README.md`](demos/zig/README.md) for details.
 
 ## How It Works
 
@@ -92,7 +92,7 @@ See [`recipes/zig/README.md`](recipes/zig/README.md) for details.
 
 ## Server-Side Integration Pattern
 
-All recipes follow this pattern:
+All demosfollow this pattern:
 
 ```php
 // Detect Switchback request
@@ -110,7 +110,7 @@ return view('app', ['page' => $page]);
 
 ## Docker Notes
 
-Recipes use multi-stage Docker builds to bundle Switchback with the client app. This creates intermediate build images that can accumulate over time.
+Demos use multi-stage Docker builds to bundle Switchback with the client app. This creates intermediate build images that can accumulate over time.
 
 **Clean up Docker build cache:**
 ```bash
@@ -126,12 +126,12 @@ docker system prune -a
 docker system df
 ```
 
-## Contributing Recipes
+## Contributing Demos
 
-Want to add a recipe for your favorite stack? Follow this structure:
+Want to add a demo for your favorite stack? Follow this structure:
 
 ```
-recipes/
+demos/
 └── your-stack/
     ├── README.md           # Setup instructions
     ├── Dockerfile          # Docker image (multi-stage build)

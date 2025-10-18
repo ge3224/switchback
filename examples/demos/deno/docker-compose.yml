@@ -6,7 +6,7 @@ services:
     image: switchback-deno:latest
     build:
       context: ../../..
-      dockerfile: examples/recipes/deno/Dockerfile
+      dockerfile: examples/demos/deno/Dockerfile
     ports:
       - "8000:8000"
     # Note: dist/ is NOT mounted - it's baked into the image

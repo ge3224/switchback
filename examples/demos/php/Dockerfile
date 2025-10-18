@@ -12,14 +12,14 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 COPY src ./src
 COPY tsconfig.json ./
 
-# Copy recipe files maintaining structure: examples/recipes/php/
-COPY examples/recipes/php/app.ts ./examples/recipes/php/app.ts
-COPY examples/recipes/php/vite.config.ts ./examples/recipes/php/vite.config.ts
-COPY examples/recipes/php/package.json ./examples/recipes/php/package.json
-COPY examples/recipes/php/.npmrc ./examples/recipes/php/.npmrc
+# Copy recipe files maintaining structure: examples/demos/php/
+COPY examples/demos/php/app.ts ./examples/demos/php/app.ts
+COPY examples/demos/php/vite.config.ts ./examples/demos/php/vite.config.ts
+COPY examples/demos/php/package.json ./examples/demos/php/package.json
+COPY examples/demos/php/.npmrc ./examples/demos/php/.npmrc
 
 # Build bundled app (includes Switchback)
-WORKDIR /build/examples/recipes/php
+WORKDIR /build/examples/demos/php
 RUN pnpm install --reporter=silent 2>&1 | grep -v "Ignored build scripts" || true
 RUN pnpm build
 
@@ -29,11 +29,11 @@ FROM php:8.3-cli
 WORKDIR /app
 
 # Copy built bundle
-COPY --from=builder /build/examples/recipes/php/dist/app.js ./dist/app.js
+COPY --from=builder /build/examples/demos/php/dist/app.js ./dist/app.js
 
 # Copy PHP backend and entrypoint
-COPY examples/recipes/php/index.php .
-COPY examples/recipes/php/entrypoint.sh .
+COPY examples/demos/php/index.php .
+COPY examples/demos/php/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 # Expose port

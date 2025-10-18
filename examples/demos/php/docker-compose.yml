@@ -6,7 +6,7 @@ services:
     image: switchback-php:latest
     build:
       context: ../../..
-      dockerfile: examples/recipes/php/Dockerfile
+      dockerfile: examples/demos/php/Dockerfile
     ports:
       - "8000:8000"
     volumes:

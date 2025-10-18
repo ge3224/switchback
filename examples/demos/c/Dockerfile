@@ -12,14 +12,14 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 COPY src ./src
 COPY tsconfig.json ./
 
-# Copy recipe files maintaining structure: examples/recipes/c/
-COPY examples/recipes/c/app.ts ./examples/recipes/c/app.ts
-COPY examples/recipes/c/vite.config.ts ./examples/recipes/c/vite.config.ts
-COPY examples/recipes/c/package.json ./examples/recipes/c/package.json
-COPY examples/recipes/c/.npmrc ./examples/recipes/c/.npmrc
+# Copy recipe files maintaining structure: examples/demos/c/
+COPY examples/demos/c/app.ts ./examples/demos/c/app.ts
+COPY examples/demos/c/vite.config.ts ./examples/demos/c/vite.config.ts
+COPY examples/demos/c/package.json ./examples/demos/c/package.json
+COPY examples/demos/c/.npmrc ./examples/demos/c/.npmrc
 
 # Build bundled app (includes Switchback)
-WORKDIR /build/examples/recipes/c
+WORKDIR /build/examples/demos/c
 RUN pnpm install --reporter=silent 2>&1 | grep -v "Ignored build scripts" || true
 RUN pnpm build
 
@@ -32,7 +32,7 @@ RUN apk add --no-cache gcc musl-dev
 WORKDIR /build
 
 # Copy C source
-COPY examples/recipes/c/server.c .
+COPY examples/demos/c/server.c .
 
 # Build C server
 RUN gcc -o server server.c -pthread -O2 -Wall
@@ -43,7 +43,7 @@ FROM alpine:3.19
 WORKDIR /app
 
 # Copy built JS bundle
-COPY --from=js-builder /build/examples/recipes/c/dist/app.js ./dist/app.js
+COPY --from=js-builder /build/examples/demos/c/dist/app.js ./dist/app.js
 
 # Copy C binary
 COPY --from=c-builder /build/server ./server

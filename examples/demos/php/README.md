@@ -1,4 +1,4 @@
-# PHP Recipe - Switchback Integration
+# PHP Demo - Switchback Integration
 
 A minimal example showing how to integrate Switchback with vanilla PHP. No frameworks needed!
 
@@ -16,7 +16,7 @@ A minimal example showing how to integrate Switchback with vanilla PHP. No frame
 Build the bundled client app:
 
 ```bash
-cd examples/recipes/php
+cd examples/demos/php
 
 # Install dependencies (uses parent's node_modules for vite/typescript)
 pnpm install --dir ../../../
@@ -48,7 +48,7 @@ php -S localhost:8000
 Docker will automatically build everything:
 
 ```bash
-# From examples/recipes/php directory
+# From examples/demos/php directory
 docker-compose up
 
 # Or build first, then run
@@ -143,7 +143,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ## Troubleshooting
 
 **App not loading?**
-- Make sure you've run `pnpm build` in the recipe directory
+- Make sure you've run `pnpm build` in the demo directory
 - Check that `/dist/app.js` exists
 - Check browser console for import errors
 

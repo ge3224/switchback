@@ -6,7 +6,7 @@ services:
     image: switchback-erlang:latest
     build:
       context: ../../../
-      dockerfile: examples/recipes/erlang/Dockerfile
+      dockerfile: examples/demos/erlang/Dockerfile
     ports:
       - "8000:8000"
     # volumes:

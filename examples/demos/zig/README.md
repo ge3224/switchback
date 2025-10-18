@@ -1,4 +1,4 @@
-# Zig Recipe - Switchback Integration
+# Zig Demo - Switchback Integration
 
 A minimal example showing how to integrate Switchback with Zig's standard library HTTP server. Blazingly fast with zero runtime overhead!
 
@@ -21,7 +21,7 @@ A minimal example showing how to integrate Switchback with Zig's standard librar
 Build the bundled client app:
 
 ```bash
-cd examples/recipes/zig
+cd examples/demos/zig
 
 # Install dependencies (uses parent's node_modules for vite/typescript)
 pnpm install --dir ../../../
@@ -57,7 +57,7 @@ zig build-exe server.zig -O ReleaseFast && ./server
 Docker will automatically build everything:
 
 ```bash
-# From examples/recipes/zig directory
+# From examples/demos/zig directory
 docker-compose up
 
 # Or build first, then run
@@ -176,12 +176,12 @@ For more complex routing, consider:
 ## Troubleshooting
 
 **App not loading?**
-- Make sure you've run `pnpm build` in the recipe directory
+- Make sure you've run `pnpm build` in the demo directory
 - Check that `dist/app.js` exists
 - Check browser console for import errors
 
 **Compilation errors?**
-- This recipe requires Zig 0.13.0 exactly
+- This demo requires Zig 0.13.0 exactly
 - Run `zig version` to verify
 - Download from https://ziglang.org/download/
 
@@ -214,7 +214,7 @@ For production use, consider:
 
 ## Why Zig?
 
-This recipe demonstrates Switchback with a systems programming language:
+This demo demonstrates Switchback with a systems programming language:
 - **Performance**: Comparable to C/C++ but with memory safety
 - **Simplicity**: No complex build systems or package managers
 - **Portability**: Cross-compile to any platform

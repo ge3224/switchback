@@ -12,7 +12,7 @@ A full-featured Recipe Manager demonstrating **Shared TypeScript Types** between
 
 ## The Key Feature: Shared TypeScript Types
 
-This recipe showcases Deno's unique advantage - **the same TypeScript types** are imported by both server and client:
+This demo showcases Deno's unique advantage - **the same TypeScript types** are imported by both server and client:
 
 ```typescript
 // shared-types.ts - imported by BOTH server.ts AND app.ts
@@ -110,7 +110,7 @@ These work on both server and client!
 ### Build and Run
 
 ```bash
-cd examples/recipes/deno
+cd examples/demos/deno
 
 # Build the client bundle (bundles app.ts + Switchback)
 deno task build
@@ -136,7 +136,7 @@ deno task dev
 Docker will automatically build everything:
 
 ```bash
-# From examples/recipes/deno directory
+# From examples/demos/deno directory
 docker-compose up
 
 # Or build first, then run
@@ -236,15 +236,15 @@ import type { Recipe } from './shared-types.ts';
 - 🛠️ Refactor once, type-check everywhere
 - 📦 Helper functions shared between server/client
 
-## Comparison with Other Recipes
+## Comparison with Other Demos
 
-- **PHP Recipe**: Shows basic navigation with a scripting language
-- **C Recipe**: Shows optimistic updates with systems programming
-- **Rust Recipe**: Shows database integration with compile-time safety
-- **Zig Recipe**: Shows form handling with modern systems language
-- **Deno Recipe**: Shows **TypeScript type sharing** across client/server
+- **PHP Demo**: Shows basic navigation with a scripting language
+- **C Demo**: Shows optimistic updates with systems programming
+- **Rust Demo**: Shows database integration with compile-time safety
+- **Zig Demo**: Shows form handling with modern systems language
+- **Deno Demo**: Shows **TypeScript type sharing** across client/server
 
-Each recipe demonstrates different Switchback patterns and language ecosystems!
+Each demo demonstrates different Switchback patterns and language ecosystems!
 
 ## Extending This Example
 
@@ -344,7 +344,7 @@ const payload = await verify(jwt, key);
 - Check logs: `docker-compose logs`
 
 **Build issues?**
-- esbuild not found? Run `deno task build` from recipe directory
+- esbuild not found? Run `deno task build` from demo directory
 - Module not found? Check import paths use `.ts` extension
 - Permission denied? Deno requires explicit permissions: `--allow-net --allow-read`
 
@@ -378,7 +378,7 @@ deno run --allow-net=:8000 --allow-read=./dist server.ts
 
 ## Why Deno?
 
-This recipe showcases Deno's strengths:
+This demo showcases Deno's strengths:
 
 - **TypeScript-first**: No tsconfig, no babel, no webpack for server
 - **Modern APIs**: Web standards (fetch, Response, URL) built-in

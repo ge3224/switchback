@@ -12,14 +12,14 @@ RUN npm install -g pnpm && pnpm install --frozen-lockfile
 COPY src ./src
 COPY tsconfig.json ./
 
-# Copy recipe files maintaining structure: examples/recipes/zig/
-COPY examples/recipes/zig/app.ts ./examples/recipes/zig/app.ts
-COPY examples/recipes/zig/vite.config.ts ./examples/recipes/zig/vite.config.ts
-COPY examples/recipes/zig/package.json ./examples/recipes/zig/package.json
-COPY examples/recipes/zig/.npmrc ./examples/recipes/zig/.npmrc
+# Copy recipe files maintaining structure: examples/demos/zig/
+COPY examples/demos/zig/app.ts ./examples/demos/zig/app.ts
+COPY examples/demos/zig/vite.config.ts ./examples/demos/zig/vite.config.ts
+COPY examples/demos/zig/package.json ./examples/demos/zig/package.json
+COPY examples/demos/zig/.npmrc ./examples/demos/zig/.npmrc
 
 # Build bundled app (includes Switchback)
-WORKDIR /build/examples/recipes/zig
+WORKDIR /build/examples/demos/zig
 RUN pnpm install --reporter=silent 2>&1 | grep -v "Ignored build scripts" || true
 RUN pnpm build
 
@@ -37,7 +37,7 @@ RUN apk add --no-cache wget tar xz \
 WORKDIR /build
 
 # Copy Zig source
-COPY examples/recipes/zig/server.zig .
+COPY examples/demos/zig/server.zig .
 
 # Build Zig server
 RUN zig build-exe server.zig -O ReleaseFast
@@ -48,7 +48,7 @@ FROM alpine:3.19
 WORKDIR /app
 
 # Copy built JS bundle
-COPY --from=js-builder /build/examples/recipes/zig/dist/app.js ./dist/app.js
+COPY --from=js-builder /build/examples/demos/zig/dist/app.js ./dist/app.js
 
 # Copy Zig binary
 COPY --from=zig-builder /build/server ./server

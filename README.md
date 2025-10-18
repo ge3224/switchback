@@ -283,6 +283,20 @@ const app = newSwitchback({
 });
 ```
 
+## Examples
+
+See [examples/demos/](examples/demos/) for full-stack integration examples with different server stacks:
+
+- **PHP** - Vanilla PHP with no framework dependencies
+- **Deno** - TypeScript type sharing between client and server
+- **Go** - Concurrent worker pools with true parallelism
+- **Rust** - Embedded SQLite database with type safety
+- **Erlang** - Actor model with real-time chat
+- **Zig** - Blazingly fast with zero dependencies
+- **C** - Optimistic updates for instant UX
+
+Each demo includes Docker setup for easy testing.
+
 ## Why Switchback?
 
 - **Simple**: No complex client-side routing or state management required

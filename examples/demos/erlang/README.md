@@ -135,7 +135,7 @@ Think of actors like people in an office:
 Build the client app:
 
 ```bash
-cd examples/recipes/erlang
+cd examples/demos/erlang
 
 # Install dependencies (uses parent's node_modules for vite/typescript)
 pnpm install --dir ../../../
@@ -181,7 +181,7 @@ rebar3 auto --apps switchback_chat
 Docker will automatically build everything:
 
 ```bash
-# From examples/recipes/erlang directory
+# From examples/demos/erlang directory
 docker-compose up
 
 # Or build first, then run
@@ -570,14 +570,14 @@ This demo demonstrates Switchback with a functional programming language optimiz
 
 Perfect for building massively concurrent, fault-tolerant systems!
 
-## Comparison with Other recipes
+## Comparison with Other Demos
 
 - **PHP Demo**: Traditional server-side rendering
 - **Go Demo**: Concurrent worker pool with goroutines
-- **Zig Recipe**: Modern systems programming with manual memory management
-- **C Recipe**: Low-level HTTP server with optimistic updates
-- **Rust Recipe**: Memory safety with embedded database
-- **Erlang Recipe**: Actor model with message passing and fault tolerance
+- **Zig Demo**: Modern systems programming with manual memory management
+- **C Demo**: Low-level HTTP server with optimistic updates
+- **Rust Demo**: Memory safety with embedded database
+- **Erlang Demo**: Actor model with message passing and fault tolerance
 
 Each demonstrates different Switchback features with different language paradigms. **Erlang's actor model and fault tolerance are unique** - perfect for chat, real-time collaboration, and distributed systems.
 
@@ -593,7 +593,7 @@ Erlang's concurrency model is one of the best for distributed systems - master i
 
 ## Next Steps
 
-Try modifying the recipe to:
+Try modifying the demoto:
 1. Add private messaging between users
 2. Create multiple chat rooms
 3. Add message persistence with Mnesia

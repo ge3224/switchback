@@ -4,7 +4,7 @@ A full-stack demo showcasing **Switchback's seamless integration with a Rust bac
 
 ## 🎯 What This Demonstrates
 
-This recipe shows the **powerful interplay between Switchback and Rust**:
+This demo shows the **powerful interplay between Switchback and Rust**:
 
 - **Switchback (Frontend)**: Client-side routing with `app.visit()`, state management, instant navigation
 - **Rust (Backend)**: Type-safe RESTful JSON API with compile-time guarantees
@@ -342,13 +342,13 @@ app.visit('/category/2'); // ✅ Fast!
 - [Rust Book](https://doc.rust-lang.org/book/)
 - [SQLite Documentation](https://www.sqlite.org/docs.html)
 
-## 🔍 Comparison with Other Recipes
+## 🔍 Comparison with Other Demos
 
-- **PHP Recipe**: Traditional LAMP stack with server-side rendering
-- **Go Recipe**: Concurrent worker pools with goroutines
-- **Zig Recipe**: Manual memory management for systems programming
-- **C Recipe**: Low-level HTTP server with optimistic updates
-- **Rust Recipe**: Embedded database with type safety and zero config
+- **PHP Demo**: Traditional LAMP stack with server-side rendering
+- **Go Demo**: Concurrent worker pools with goroutines
+- **Zig Demo**: Manual memory management for systems programming
+- **C Demo**: Low-level HTTP server with optimistic updates
+- **Rust Demo**: Embedded database with type safety and zero config
 
 Each demonstrates different Switchback integrations. **Rust's embedded SQLite support is unique** - perfect for applications that need a database without external dependencies.
 
