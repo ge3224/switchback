@@ -62,24 +62,17 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
     options: VisitOptions
   ): Promise<void> {
     try {
-      const isGetRequest = method === 'get';
-      const fetchUrl = isGetRequest && options.data
-        ? `${url}?${new URLSearchParams(options.data as Record<string, string>)}`
-        : url;
-
+      const isGet = method === 'get';
+      const fetchUrl = isGet && options.data ? `${url}?${new URLSearchParams(options.data as Record<string, string>)}` : url;
       const response = await fetch(fetchUrl, {
         method: method.toUpperCase(),
         headers,
-        body: !isGetRequest && options.data
-          ? options.data instanceof FormData ? options.data : JSON.stringify(options.data)
-          : undefined,
+        body: !isGet && options.data ? (options.data instanceof FormData ? options.data : JSON.stringify(options.data)) : undefined,
       });
 
       if (!response.ok) {
-        const errors = await response.json().catch(() => ({ message: 'Request failed' }));
-        options.onError?.(errors);
-        options.onFinish?.();
-        return;
+        options.onError?.(await response.json().catch(() => ({ message: 'Request failed' })));
+        return options.onFinish?.();
       }
 
       const page: Page = await response.json();
@@ -92,23 +85,14 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
     }
   }
 
-  function visitWithXhr(
-    url: string,
-    headers: Record<string, string>,
-    options: VisitOptions
-  ): Promise<void> {
+  function visitWithXhr(url: string, headers: Record<string, string>, options: VisitOptions): Promise<void> {
     return new Promise(function promiseExecutor(resolve, reject) {
       const xhr = new XMLHttpRequest();
       xhr.open('GET', url);
-
-      for (const [key, value] of Object.entries(headers)) {
-        xhr.setRequestHeader(key, value);
+      for (const key in headers) {
+        xhr.setRequestHeader(key, headers[key]);
       }
-
-      xhr.onprogress = function onProgress(e) {
-        options.onProgress?.(e);
-      };
-
+      xhr.onprogress = function onProgress(e) { options.onProgress?.(e); };
       xhr.onload = async function onLoad() {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
@@ -127,158 +111,103 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
         }
         options.onFinish?.();
       };
-
       xhr.onerror = function onError() {
-        options.onError?.(new Error('Network error'));
+        const error = new Error('Network error');
+        options.onError?.(error);
         options.onFinish?.();
-        reject(new Error('Network error'));
+        reject(error);
       };
-
       xhr.send();
     });
   }
 
   function morphElement(fromEl: Element, toEl: Element): void {
-    // Simple HTML morphing algorithm
-    // Efficiently updates DOM by reusing existing nodes when possible
-
     // Update attributes
     const fromAttrs = fromEl.attributes;
     const toAttrs = toEl.attributes;
-
-    // Remove old attributes
     for (let i = fromAttrs.length - 1; i >= 0; i--) {
-      const attr = fromAttrs[i];
-      if (!toEl.hasAttribute(attr.name)) {
-        fromEl.removeAttribute(attr.name);
-      }
+      if (!toEl.hasAttribute(fromAttrs[i].name)) fromEl.removeAttribute(fromAttrs[i].name);
     }
-
-    // Set new attributes
     for (let i = 0; i < toAttrs.length; i++) {
       const attr = toAttrs[i];
-      if (fromEl.getAttribute(attr.name) !== attr.value) {
-        fromEl.setAttribute(attr.name, attr.value);
-      }
+      if (fromEl.getAttribute(attr.name) !== attr.value) fromEl.setAttribute(attr.name, attr.value);
     }
 
     // Morph children
     const fromChildren = Array.from(fromEl.childNodes);
     const toChildren = Array.from(toEl.childNodes);
+    let fromIdx = 0, toIdx = 0;
 
-    let fromIndex = 0;
-    let toIndex = 0;
-
-    while (toIndex < toChildren.length) {
-      const toNode = toChildren[toIndex];
-      const fromNode = fromChildren[fromIndex];
+    while (toIdx < toChildren.length) {
+      const toNode = toChildren[toIdx];
+      const fromNode = fromChildren[fromIdx];
 
       if (!fromNode) {
-        // Add new node
         fromEl.appendChild(toNode.cloneNode(true));
-        toIndex++;
+        toIdx++;
         continue;
       }
 
-      // Text nodes
       if (toNode.nodeType === 3 && fromNode.nodeType === 3) {
-        if (fromNode.nodeValue !== toNode.nodeValue) {
-          fromNode.nodeValue = toNode.nodeValue;
-        }
-        fromIndex++;
-        toIndex++;
+        if (fromNode.nodeValue !== toNode.nodeValue) fromNode.nodeValue = toNode.nodeValue;
+        fromIdx++; toIdx++;
         continue;
       }
 
-      // Element nodes
       if (toNode.nodeType === 1 && fromNode.nodeType === 1) {
-        const toEl = toNode as Element;
-        const fromEl = fromNode as Element;
-
-        if (toEl.tagName === fromEl.tagName) {
-          // Same tag, morph recursively
-          morphElement(fromEl, toEl);
-          fromIndex++;
-          toIndex++;
+        if ((toNode as Element).tagName === (fromNode as Element).tagName) {
+          morphElement(fromNode as Element, toNode as Element);
+          fromIdx++; toIdx++;
           continue;
         }
       }
 
-      // Different types, replace
       fromEl.replaceChild(toNode.cloneNode(true), fromNode);
-      fromIndex++;
-      toIndex++;
+      fromIdx++; toIdx++;
     }
 
-    // Remove extra nodes
-    while (fromIndex < fromChildren.length) {
-      fromEl.removeChild(fromChildren[fromIndex]);
-      fromIndex++;
-    }
+    while (fromIdx < fromChildren.length) fromEl.removeChild(fromChildren[fromIdx++]);
   }
 
   async function swapPage(page: Page, options: VisitOptions): Promise<void> {
     if (swapInProgress) return;
     swapInProgress = true;
 
-    // Save scroll position before swap
     if (currentPage && !options.preserveScroll) {
       scrollPositions[currentPage.url] = { x: window.scrollX, y: window.scrollY };
     }
 
-    // Merge props if partial reload
-    const mergedPage = options.only && currentPage
-      ? { ...page, props: { ...currentPage.props, ...page.props } }
-      : page;
-
+    const mergedPage = options.only && currentPage ? { ...page, props: { ...currentPage.props, ...page.props } } : page;
     currentPage = mergedPage;
-
-    // Update history
     history[options.replace ? 'replaceState' : 'pushState']({ page: mergedPage }, '', mergedPage.url);
 
     const el = document.querySelector('[data-swbk-app]');
-    if (!el) {
-      swapInProgress = false;
-      return;
-    }
+    if (!el) return void (swapInProgress = false);
 
-    // Handle server-rendered HTML or client-side component
     if (mergedPage.html) {
-      // SSR: Morph server-rendered HTML into DOM
       const template = document.createElement('template');
       template.innerHTML = mergedPage.html.trim();
       const newContent = template.content.firstElementChild;
-
       if (newContent) {
-        if (el.firstElementChild) {
-          morphElement(el.firstElementChild, newContent);
-        } else {
-          el.appendChild(newContent);
-        }
+        el.firstElementChild ? morphElement(el.firstElementChild, newContent) : el.appendChild(newContent);
       }
     } else {
-      // Client-side: Resolve component and render
       const Component = await Promise.resolve(config.resolve(mergedPage.component));
       config.setup({ el, App: Component, props: mergedPage.props });
     }
 
-    // Restore scroll position
     if (!options.preserveScroll) {
-      const savedPosition = scrollPositions[mergedPage.url];
-      window.scrollTo(savedPosition?.x ?? 0, savedPosition?.y ?? 0);
+      const pos = scrollPositions[mergedPage.url];
+      window.scrollTo(pos?.x ?? 0, pos?.y ?? 0);
     }
 
     swapInProgress = false;
   }
 
   function setupInterceptors(): void {
-    // Intercept link clicks
     document.addEventListener('click', function onClick(e) {
-      const target = e.target as HTMLElement;
-      const link = target.closest('a') as HTMLAnchorElement | null;
-
+      const link = (e.target as HTMLElement).closest('a') as HTMLAnchorElement | null;
       if (!link || !shouldIntercept(link)) return;
-
       e.preventDefault();
       visit(link.href, {
         replace: link.hasAttribute('data-replace'),
@@ -286,19 +215,13 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
       });
     });
 
-    // Intercept form submits
     document.addEventListener('submit', function onSubmit(e) {
       const form = e.target as HTMLFormElement;
-
       if (!shouldInterceptForm(form)) return;
-
       e.preventDefault();
-      const formData = new FormData(form);
-      const method = (form.getAttribute('method') || 'post').toLowerCase() as VisitOptions['method'];
-
       visit(form.action || window.location.href, {
-        method,
-        data: formData,
+        method: (form.getAttribute('method') || 'post').toLowerCase() as VisitOptions['method'],
+        data: new FormData(form),
         replace: form.hasAttribute('data-replace'),
         preserveScroll: form.hasAttribute('data-preserve-scroll'),
       });
@@ -307,9 +230,7 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
 
   function setupHistoryListener(): void {
     window.addEventListener('popstate', function onPopState(e) {
-      if (e.state?.page) {
-        swapPage(e.state.page, { preserveScroll: true });
-      }
+      if (e.state?.page) swapPage(e.state.page, { preserveScroll: true });
     });
   }
 
@@ -321,7 +242,6 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
       ...(options.only && { 'X-Switchback-Partial-Data': options.only.join(',') }),
       ...options.headers,
     };
-
     options.onStart?.();
     return options.useXhr && method === 'get' && options.onProgress
       ? visitWithXhr(url, headers, options)
@@ -341,23 +261,17 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
   setupInterceptors();
   setupHistoryListener();
 
-  // Render initial page if provided
   if (currentPage) {
     history.replaceState({ page: currentPage }, '', currentPage.url);
-
     const el = document.querySelector('[data-swbk-app]');
     if (el) {
       if (currentPage.html) {
-        // Inject server-rendered HTML
         const template = document.createElement('template');
         template.innerHTML = currentPage.html.trim();
-        const newContent = template.content.firstElementChild;
-        if (newContent) {
-          el.appendChild(newContent);
-        }
+        const content = template.content.firstElementChild;
+        if (content) el.appendChild(content);
       } else {
-        // Client-side rendering
-        Promise.resolve(config.resolve(currentPage.component)).then(Component => {
+        Promise.resolve(config.resolve(currentPage.component)).then(function setupComponent(Component) {
           config.setup({ el, App: Component, props: currentPage!.props });
         });
       }

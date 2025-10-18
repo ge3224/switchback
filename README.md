@@ -320,7 +320,7 @@ Each demo includes Docker setup for easy testing.
 - **Simple**: No complex client-side routing or state management required
 - **Familiar**: Use server-side patterns you already know
 - **Fast**: Page transitions without full page reloads
-- **Auditable**: ~200 lines of readable TypeScript
+- **Auditable**: ~300 lines of readable TypeScript
 - **Zero deps**: No external dependencies to audit
 - **Vendorable**: Easy to vendor via git submodules
 - **Flexible**: Works with any backend framework
