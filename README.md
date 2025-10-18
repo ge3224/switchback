@@ -9,6 +9,22 @@ Build single-page apps with your preferred server stack.
 
 **Zero dependencies. Vendorable. Auditable. ~300 lines.**
 
+## Examples
+
+See [examples/demos/](examples/demos/) for full-stack integration examples:
+
+- **C** - Optimistic updates for instant UX
+- **C#** - .NET minimal APIs with dependency injection
+- **Deno** - TypeScript type sharing between client and server
+- **Erlang** - Actor model with real-time chat
+- **Go** - Concurrent worker pools with true parallelism
+- **PHP** - Vanilla PHP with no framework dependencies
+- **Rust** - Embedded SQLite database with type safety
+- **Zig** - Blazingly fast with zero dependencies
+- **Assembly** - x86-64 assembly with NASM (because why not?)
+
+Each demo includes Docker setup for easy testing.
+
 ## Philosophy
 
 Switchback lets you create fully client-side rendered SPAs while keeping your familiar backend workflow. It works by:
@@ -16,7 +32,7 @@ Switchback lets you create fully client-side rendered SPAs while keeping your fa
 - **No client-side routing** - Your server owns the routes
 - **No API needed** - Just return page data from controllers
 - **Traditional patterns** - Build controllers and views like always
-- **Framework agnostic** - Works with any backend (Laravel, Rails, Express, Django, etc.)
+- **Framework agnostic** - Works with any backend
 
 ## Features
 
@@ -100,46 +116,52 @@ const app = newSwitchback({
 
 Your server returns JSON when `X-Switchback` header is present:
 
-**PHP/Laravel example:**
+**Go example:**
 
-```php
-Route::get('/users/{id}', function ($id) {
-    $user = User::find($id);
+```go
+func usersHandler(w http.ResponseWriter, r *http.Request) {
+    id := r.PathValue("id")
+    user := db.GetUser(id)
 
-    if (request()->header('X-Switchback')) {
-        return response()->json([
-            'component' => 'Users/Show',
-            'props' => ['user' => $user],
-            'url' => "/users/{$id}",
-        ]);
+    if r.Header.Get("X-Switchback") != "" {
+        json.NewEncoder(w).Encode(map[string]any{
+            "component": "Users/Show",
+            "props":     map[string]any{"user": user},
+            "url":       "/users/" + id,
+        })
+        return
     }
 
-    return view('app', [
-        'page' => [
-            'component' => 'Users/Show',
-            'props' => ['user' => $user],
-            'url' => "/users/{$id}",
-        ]
-    ]);
-});
+    renderApp(w, Page{
+        Component: "Users/Show",
+        Props:     map[string]any{"user": user},
+        URL:       "/users/" + id,
+    })
+}
 ```
 
-**Express example:**
+**C example:**
 
-```javascript
-app.get('/users/:id', (req, res) => {
-    const user = { name: 'John', email: 'john@example.com' };
+```c
+void users_handler(struct mg_connection *c, struct mg_http_message *hm) {
+    char *id = get_param(hm, "id");
+    User *user = db_get_user(id);
 
-    if (req.headers['x-switchback']) {
-        return res.json({
-            component: 'Users/Show',
-            props: { user },
-            url: `/users/${req.params.id}`,
-        });
+    if (mg_http_get_header(hm, "X-Switchback") != NULL) {
+        mg_http_reply(c, 200, "Content-Type: application/json\r\n",
+            "{\"component\":\"Users/Show\","
+            "\"props\":{\"user\":%s},"
+            "\"url\":\"/users/%s\"}",
+            user_to_json(user), id);
+        return;
     }
 
-    res.render('app', { page: { component: 'Users/Show', props: { user }, url: req.url } });
-});
+    render_app(c, (Page){
+        .component = "Users/Show",
+        .props = user_to_json(user),
+        .url = format("/users/%s", id)
+    });
+}
 ```
 
 ### Component Examples
@@ -294,20 +316,6 @@ link.href = '/page';
 link.setAttribute('data-preserve-scroll', '');
 link.textContent = 'Link';
 ```
-
-## Examples
-
-See [examples/demos/](examples/demos/) for full-stack integration examples with different server stacks:
-
-- **PHP** - Vanilla PHP with no framework dependencies
-- **Deno** - TypeScript type sharing between client and server
-- **Go** - Concurrent worker pools with true parallelism
-- **Rust** - Embedded SQLite database with type safety
-- **Erlang** - Actor model with real-time chat
-- **Zig** - Blazingly fast with zero dependencies
-- **C** - Optimistic updates for instant UX
-
-Each demo includes Docker setup for easy testing.
 
 ## Why Switchback?
 
