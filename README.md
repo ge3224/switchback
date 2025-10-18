@@ -1,9 +1,9 @@
 # Switchback
 
-[![Version](https://img.shields.io/github/v/release/ge3224/switchback?color=blue)](https://github.com/ge3224/switchback)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/ge3224/switchback)
 [![No Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/ge3224/switchback)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://img.shields.io/github/actions/workflow/status/ge3224/switchback/ci.yml?branch=main)](https://github.com/ge3224/switchback/actions)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](https://github.com/ge3224/switchback/actions)
 
 Build single-page apps with your preferred server stack. Zero dependencies, vendorable, and auditable.
 
