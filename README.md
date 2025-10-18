@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](https://github.com/ge3224/switchback/actions)
 
-Build single-page apps with your preferred server stack. Zero dependencies, vendorable, and auditable.
+Build single-page apps with your preferred server stack.
 
 **Zero dependencies. Vendorable. Auditable. ~300 lines.**
 
