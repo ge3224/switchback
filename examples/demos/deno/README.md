@@ -100,56 +100,20 @@ export function formatTime(minutes: number): string {
 
 These work on both server and client!
 
-## Running Locally
+## Try It Out
 
-### Prerequisites
-
-- Deno 2.0+ ([install guide](https://deno.land/manual/getting_started/installation))
-- No Node.js needed! (But esbuild is used for client bundling)
-
-### Build and Run
+Want to see TypeScript type sharing without installing Deno?
 
 ```bash
 cd examples/demos/deno
-
-# Build the client bundle (bundles app.ts + Switchback)
-deno task build
-
-# Run the server (no build step needed - Deno runs TypeScript!)
-deno task serve
-```
-
-Open http://localhost:8000
-
-**For development with auto-rebuild:**
-
-```bash
-# Terminal 1: Watch and rebuild client on changes
-deno task build --watch
-
-# Terminal 2: Watch and restart server on changes
-deno task dev
-```
-
-### Option 2: Docker (Recommended)
-
-Docker will automatically build everything:
-
-```bash
-# From examples/demos/deno directory
-docker-compose up
-
-# Or build first, then run
-docker-compose build
 docker-compose up
 ```
 
 Open http://localhost:8000
 
-**Note:** The Dockerfile uses a multi-stage build:
-1. **Deno builder stage**: Bundles client TypeScript with esbuild
-2. **Runtime stage**: Minimal Deno image with compiled bundle
-3. Server runs TypeScript directly - no transpilation!
+## Running Natively
+
+To run this demo with a local Deno installation, see the [Deno installation guide](https://deno.land/manual/getting_started/installation).
 
 ## Available Routes
 

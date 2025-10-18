@@ -121,80 +121,20 @@ Think of actors like people in an office:
 
 **The magic**: Each user is a completely independent process. If one user's process crashes, it doesn't affect others!
 
-## Running Locally
+## Try It Out
 
-### Prerequisites
-
-- Erlang/OTP 26+ ([Install guide](https://www.erlang.org/downloads))
-- rebar3 ([Install guide](https://rebar3.org/docs/getting-started/))
-- Node.js 20+ with pnpm
-- Or just Docker!
-
-### Option 1: Native Build
-
-Build the client app:
+Want to see Erlang's actor model in action without installing Erlang/OTP?
 
 ```bash
 cd examples/demos/erlang
-
-# Install dependencies (uses parent's node_modules for vite/typescript)
-pnpm install --dir ../../../
-
-# Build app.ts + Switchback into dist/app.js
-pnpm build
-```
-
-Build and run the Erlang server:
-
-```bash
-# Fetch Erlang dependencies
-rebar3 get-deps
-
-# Compile Erlang code
-rebar3 compile
-
-# Start the Erlang shell with the application
-rebar3 shell
-```
-
-Inside the Erlang shell:
-
-```erlang
-% Start the application
-switchback_chat:start().
-```
-
-Open http://localhost:8000
-
-**For development with auto-rebuild:**
-
-```bash
-# Terminal 1: Watch and rebuild client on changes
-pnpm dev
-
-# Terminal 2: Run Erlang with auto-reload
-rebar3 auto --apps switchback_chat
-```
-
-### Option 2: Docker (Recommended)
-
-Docker will automatically build everything:
-
-```bash
-# From examples/demos/erlang directory
-docker-compose up
-
-# Or build first, then run
-docker-compose build
 docker-compose up
 ```
 
 Open http://localhost:8000
 
-**Note:** The Dockerfile uses a multi-stage build:
-1. **JS builder stage**: Bundles app.ts with Switchback source into single JS file
-2. **Erlang builder stage**: Compiles Erlang code with rebar3
-3. **Runtime stage**: Minimal Alpine image with Erlang/OTP runtime
+## Running Natively
+
+To run this demo with a local Erlang installation, see the [Erlang downloads page](https://www.erlang.org/downloads).
 
 ## Try the Real-Time Chat
 

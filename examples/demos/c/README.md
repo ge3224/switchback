@@ -28,69 +28,20 @@ Optimistic updates are a UI pattern where you update the interface **immediately
 
 If the server fails, the optimistic update is rolled back and an error is shown.
 
-## Running Locally
+## Try It Out
 
-### Prerequisites
-
-- GCC compiler (or clang)
-- Node.js 20+ with pnpm
-- POSIX-compatible system (Linux, macOS, BSD)
-
-### Build and Run
-
-Build the bundled client app:
+Want to see optimistic updates in action without installing a C compiler?
 
 ```bash
 cd examples/demos/c
-
-# Install dependencies (uses parent's node_modules for vite/typescript)
-pnpm install --dir ../../../
-
-# Build app.ts + Switchback into dist/app.js
-pnpm build
-```
-
-Build and run the C server:
-
-```bash
-# Compile C server
-gcc -o server server.c -pthread -O2 -Wall
-
-# Run server
-./server
-```
-
-Open http://localhost:8000
-
-**For development with auto-rebuild:**
-
-```bash
-# Terminal 1: Watch and rebuild client on changes
-pnpm dev
-
-# Terminal 2: Run C server (recompile manually when server.c changes)
-gcc -o server server.c -pthread -O2 -Wall && ./server
-```
-
-### Option 2: Docker (Recommended)
-
-Docker will automatically build everything:
-
-```bash
-# From examples/demos/c directory
-docker-compose up
-
-# Or build first, then run
-docker-compose build
 docker-compose up
 ```
 
 Open http://localhost:8000
 
-**Note:** The Dockerfile uses a multi-stage build:
-1. **JS builder stage**: Bundles app.ts with Switchback source into single JS file
-2. **C builder stage**: Compiles server.c with GCC
-3. **Runtime stage**: Minimal Alpine image with compiled binary
+## Running Natively
+
+To run this demo with a local C compiler, most systems already have GCC or Clang installed. Check with `gcc --version`.
 
 ## Try the Optimistic Updates
 

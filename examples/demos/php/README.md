@@ -9,58 +9,20 @@ A minimal example showing how to integrate Switchback with vanilla PHP. No frame
 - **vite.config.ts** - Bundles app.ts + Switchback into single JS file
 - **Docker setup** - One-command startup with PHP built-in server
 
-## Running Locally
+## Try It Out
 
-### Option 1: PHP Built-in Server (Recommended)
-
-Build the bundled client app:
+Want to see vanilla PHP + Switchback without setting up PHP locally?
 
 ```bash
 cd examples/demos/php
-
-# Install dependencies (uses parent's node_modules for vite/typescript)
-pnpm install --dir ../../../
-
-# Build app.ts + Switchback into dist/app.js
-pnpm build
-```
-
-Then start the PHP server:
-
-```bash
-php -S localhost:8000
-```
-
-Open http://localhost:8000
-
-**For development with auto-rebuild:**
-
-```bash
-# Terminal 1: Watch and rebuild on changes
-pnpm dev
-
-# Terminal 2: Run PHP server
-php -S localhost:8000
-```
-
-### Option 2: Docker
-
-Docker will automatically build everything:
-
-```bash
-# From examples/demos/php directory
-docker-compose up
-
-# Or build first, then run
-docker-compose build
 docker-compose up
 ```
 
 Open http://localhost:8000
 
-**Note:** The Dockerfile uses a multi-stage build:
-1. **Builder stage**: Bundles app.ts with Switchback source into single JS file
-2. **Runtime stage**: PHP 8.3 serving the bundled app
+## Running Natively
+
+To run this demo with a local PHP installation, see the [PHP installation guide](https://www.php.net/manual/en/install.php). Most systems already have PHP installed - check with `php --version`.
 
 ## How It Works
 

@@ -9,68 +9,20 @@ A minimal example showing how to integrate Switchback with Zig's standard librar
 - **vite.config.ts** - Bundles app.ts + Switchback into single JS file
 - **Docker setup** - Multi-stage build with Zig compiler
 
-## Running Locally
+## Try It Out
 
-### Prerequisites
-
-- [Zig 0.13.0](https://ziglang.org/download/)
-- Node.js 20+ with pnpm
-
-### Build and Run
-
-Build the bundled client app:
+Want to see Zig's performance without installing Zig locally?
 
 ```bash
 cd examples/demos/zig
-
-# Install dependencies (uses parent's node_modules for vite/typescript)
-pnpm install --dir ../../../
-
-# Build app.ts + Switchback into dist/app.js
-pnpm build
-```
-
-Build and run the Zig server:
-
-```bash
-# Compile Zig server
-zig build-exe server.zig -O ReleaseFast
-
-# Run server
-./server
-```
-
-Open http://localhost:8000
-
-**For development with auto-rebuild:**
-
-```bash
-# Terminal 1: Watch and rebuild client on changes
-pnpm dev
-
-# Terminal 2: Run Zig server (recompile manually when server.zig changes)
-zig build-exe server.zig -O ReleaseFast && ./server
-```
-
-### Option 2: Docker (Recommended)
-
-Docker will automatically build everything:
-
-```bash
-# From examples/demos/zig directory
-docker-compose up
-
-# Or build first, then run
-docker-compose build
 docker-compose up
 ```
 
 Open http://localhost:8000
 
-**Note:** The Dockerfile uses a multi-stage build:
-1. **JS builder stage**: Bundles app.ts with Switchback source into single JS file
-2. **Zig builder stage**: Compiles server.zig with Zig 0.13.0
-3. **Runtime stage**: Minimal Alpine image with compiled binary
+## Running Natively
+
+To run this demo with a local Zig installation, see the [Zig download page](https://ziglang.org/download/).
 
 ## How It Works
 

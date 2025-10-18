@@ -89,22 +89,22 @@ This demo shows the **powerful interplay between Switchback and Rust**:
 - ✅ **Offline-first** - Local database, no network dependency
 - ✅ **High performance** - Native code, zero-cost abstractions
 
-## 🚀 Running the Demo
+## Try It Out
+
+Want to see Rust + SQLite in action without installing Rust locally?
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Build JavaScript bundle
-pnpm build:js
-
-# Run the Rust server
-cargo run --features server
-
-# Visit http://localhost:8000
+cd examples/demos/rust
+docker-compose up
 ```
 
-The database will be created automatically on first run with sample data.
+Open http://localhost:8000
+
+The database will be created automatically with sample data.
+
+## Running Natively
+
+To run this demo with a local Rust installation, see the [Rust installation guide](https://www.rust-lang.org/tools/install).
 
 ## 📁 Project Structure
 

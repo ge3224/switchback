@@ -53,70 +53,22 @@ Total: ~2.4 seconds (4x faster!)
 4. **Real-Time UI**: Client polls every second to show live worker status
 5. **Interactive Demo**: Submit multiple numbers and watch them process in parallel
 
-## Running Locally
+## Try It Out
 
-### Prerequisites
-
-- Go 1.21+
-- Node.js 20+ with pnpm
-- Or just Docker!
-
-### Option 1: Native Build
-
-Build the client app:
+Want to see Go's concurrency in action without setting up a Go environment?
 
 ```bash
 cd examples/demos/go
-
-# Install dependencies (uses parent's node_modules for vite/typescript)
-pnpm install --dir ../../../
-
-# Build app.ts + Switchback into dist/app.js
-pnpm build
-```
-
-Build and run the Go server:
-
-```bash
-# Build Go server
-go build -o server server.go
-
-# Run server
-./server
-```
-
-Open http://localhost:8000
-
-**For development with auto-rebuild:**
-
-```bash
-# Terminal 1: Watch and rebuild client on changes
-pnpm dev
-
-# Terminal 2: Run Go server with auto-restart (install air: go install github.com/cosmtrek/air@latest)
-air
-# Or manually: go run server.go
-```
-
-### Option 2: Docker (Recommended)
-
-Docker will automatically build everything:
-
-```bash
-# From examples/demos/go directory
-docker-compose up
-
-# Or build first, then run
-docker-compose build
 docker-compose up
 ```
 
 Open http://localhost:8000
 
-**Note:** The Dockerfile uses a multi-stage build:
-1. **JS builder stage**: Bundles app.ts with Switchback source into single JS file
-2. **Go builder stage**: Compiles server.go into static binary
-3. **Runtime stage**: Minimal Alpine image with both artifacts
+Docker handles all the build steps automatically.
+
+## Running Natively
+
+To run this demo with a local Go installation, see the [Go installation guide](https://go.dev/doc/install).
 
 ## Try the Concurrent Processing
 
