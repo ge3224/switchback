@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  csharp:
+    container_name: switchback_csharp
+    image: switchback-csharp:latest
+    build:
+      context: ../../..
+      dockerfile: examples/demos/csharp/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ASPNETCORE_URLS=http://+:8000
+    # Note: wwwroot/dist/ is NOT mounted - it's baked into the image
+    # For development with hot reload, build locally and uncomment:
+    # volumes:
+    #   - ./wwwroot/dist:/app/wwwroot/dist:ro
