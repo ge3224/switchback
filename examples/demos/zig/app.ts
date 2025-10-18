@@ -301,7 +301,6 @@ function Layout(children) {
     h('div', { class: 'nav-content' },
       h('div', {},
         h('a', { href: '/', 'data-swbk': '' }, '⚡ Home'),
-        h('a', { href: '/users', 'data-swbk': '' }, '👥 Users'),
         h('a', { href: '/submit', 'data-swbk': '' }, '📝 Submit'),
         h('a', { href: '/about', 'data-swbk': '' }, 'ℹ️  About'),
       ),
@@ -339,10 +338,6 @@ const pages = {
       ),
       h('div', { class: 'stats' },
         h('div', { class: 'stat-card' },
-          h('strong', {}, props.stats.users),
-          h('div', {}, 'Total Users')
-        ),
-        h('div', { class: 'stat-card' },
           h('strong', {}, props.stats.submissions),
           h('div', {}, 'Form Submissions')
         ),
@@ -354,48 +349,9 @@ const pages = {
       h('p', { style: { marginTop: '2rem', fontSize: '1.1rem' } },
         'This recipe showcases Switchback\'s form handling capabilities with a Zig backend.'
       ),
-      h('div', { style: { marginTop: '2rem', display: 'flex', gap: '1rem' } },
-        h('a', { href: '/submit', 'data-swbk': '', class: 'btn' }, '📝 Try Form Submit'),
-        h('a', { href: '/users', 'data-swbk': '', class: 'btn' }, '👥 View Users')
+      h('div', { style: { marginTop: '2rem' } },
+        h('a', { href: '/submit', 'data-swbk': '', class: 'btn' }, '📝 Try Form Submit')
       )
-    )
-  ),
-
-  'Users/Index': (props) => Layout(
-    h('div', {},
-      h('h1', {}, '👥 Users'),
-      h('div', { class: 'user-list' },
-        ...props.users.map(user =>
-          h('div', { class: 'user-card' },
-            h('h3', {},
-              h('a', { href: `/users/${user.id}`, 'data-swbk': '' }, user.name)
-            ),
-            h('p', {}, `📧 ${user.email}`),
-            h('p', { style: { color: '#8b949e', fontSize: '0.9rem', marginTop: '0.5rem' } },
-              `Joined: ${user.joined}`
-            )
-          )
-        )
-      ),
-      h('a', { href: '/', 'data-swbk': '', class: 'back-link' }, '← Back to Home')
-    )
-  ),
-
-  'Users/Show': (props) => Layout(
-    h('div', {},
-      h('h1', {}, props.user.name),
-      h('div', { class: 'terminal-box' },
-        `User #${props.user.id}`
-      ),
-      h('p', { style: { fontSize: '1.1rem', margin: '1rem 0' } },
-        h('strong', { style: { color: '#f97316' } }, '📧 Email: '),
-        props.user.email
-      ),
-      h('p', { style: { fontSize: '1.1rem', margin: '1rem 0' } },
-        h('strong', { style: { color: '#f97316' } }, '📅 Joined: '),
-        props.user.joined
-      ),
-      h('a', { href: '/users', 'data-swbk': '', class: 'back-link' }, '← Back to Users')
     )
   ),
 

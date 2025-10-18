@@ -3,19 +3,6 @@ const mem = std.mem;
 const fs = std.fs;
 const posix = std.posix;
 
-const User = struct {
-    id: u32,
-    name: []const u8,
-    email: []const u8,
-    joined: []const u8,
-};
-
-const users = [_]User{
-    .{ .id = 1, .name = "Alice Johnson", .email = "alice@example.com", .joined = "2024-01-15" },
-    .{ .id = 2, .name = "Bob Smith", .email = "bob@example.com", .joined = "2024-02-20" },
-    .{ .id = 3, .name = "Charlie Brown", .email = "charlie@example.com", .joined = "2024-03-10" },
-};
-
 // Global server state
 var server_running = std.atomic.Value(bool).init(true);
 var server_fd_global: posix.fd_t = -1;
@@ -305,44 +292,8 @@ fn handleRequest(allocator: mem.Allocator, connection: std.net.Server.Connection
         submission_mutex.unlock();
 
         json = try std.fmt.allocPrint(allocator,
-            \\{{"component":"Home","props":{{"message":"A blazingly fast Zig backend with Switchback form handling","stats":{{"users":{d},"submissions":{d},"framework":"Zig 0.13"}}}},"url":"/"}}
-        , .{ users.len, count });
-    } else if (mem.eql(u8, uri, "/users")) {
-        json = try std.fmt.allocPrint(allocator,
-            \\{{"component":"Users/Index","props":{{"users":[{{"id":1,"name":"Alice Johnson","email":"alice@example.com","joined":"2024-01-15"}},{{"id":2,"name":"Bob Smith","email":"bob@example.com","joined":"2024-02-20"}},{{"id":3,"name":"Charlie Brown","email":"charlie@example.com","joined":"2024-03-10"}}]}},"url":"/users"}}
-        , .{});
-    } else if (mem.startsWith(u8, uri, "/users/") and uri.len > 7) {
-        const id_str = uri[7..];
-        const id = std.fmt.parseInt(u32, id_str, 10) catch {
-            json = try std.fmt.allocPrint(allocator,
-                \\{{"component":"Error","props":{{"message":"Invalid user ID"}},"url":"{s}"}}
-            , .{uri});
-            if (is_switchback) {
-                try respondJson(connection.stream, json);
-            } else {
-                try respondHtml(allocator, connection.stream, json);
-            }
-            allocator.free(json);
-            return;
-        };
-
-        var found: ?User = null;
-        for (users) |user| {
-            if (user.id == id) {
-                found = user;
-                break;
-            }
-        }
-
-        if (found) |user| {
-            json = try std.fmt.allocPrint(allocator,
-                \\{{"component":"Users/Show","props":{{"user":{{"id":{d},"name":"{s}","email":"{s}","joined":"{s}"}}}},"url":"{s}"}}
-            , .{ user.id, user.name, user.email, user.joined, uri });
-        } else {
-            json = try std.fmt.allocPrint(allocator,
-                \\{{"component":"Error","props":{{"message":"User not found"}},"url":"{s}"}}
-            , .{uri});
-        }
+            \\{{"component":"Home","props":{{"message":"A blazingly fast Zig backend with Switchback form handling","stats":{{"submissions":{d},"framework":"Zig 0.13"}}}},"url":"/"}}
+        , .{count});
     } else if (mem.eql(u8, uri, "/submit") and !is_post) {
         json = try std.fmt.allocPrint(allocator,
             \\{{"component":"Submit","props":{{"recentSubmissions":[]}},"url":"/submit"}}
