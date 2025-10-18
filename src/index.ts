@@ -346,13 +346,22 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
     history.replaceState({ page: currentPage }, '', currentPage.url);
 
     const el = document.querySelector('[data-swbk-app]');
-    if (el && !currentPage.html) {
-      // Only render if not using SSR (SSR HTML is already in the DOM)
-      Promise.resolve(config.resolve(currentPage.component)).then(Component => {
-        config.setup({ el, App: Component, props: currentPage!.props });
-      });
+    if (el) {
+      if (currentPage.html) {
+        // Inject server-rendered HTML
+        const template = document.createElement('template');
+        template.innerHTML = currentPage.html.trim();
+        const newContent = template.content.firstElementChild;
+        if (newContent) {
+          el.appendChild(newContent);
+        }
+      } else {
+        // Client-side rendering
+        Promise.resolve(config.resolve(currentPage.component)).then(Component => {
+          config.setup({ el, App: Component, props: currentPage!.props });
+        });
+      }
     }
-    // If currentPage.html exists, the server already rendered it - don't touch the DOM
   }
 
   return { visit, page, reload };
