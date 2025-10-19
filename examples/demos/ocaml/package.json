@@ -1,0 +1,16 @@
+{
+  "name": "switchback-ocaml-demo",
+  "version": "1.0.0",
+  "description": "OCaml demo for Switchback - demonstrating Pattern Matching & Type-Safe State Machines",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}

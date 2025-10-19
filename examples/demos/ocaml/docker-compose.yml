@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  ocaml:
+    container_name: switchback_ocaml
+    image: switchback-ocaml:latest
+    build:
+      context: ../../../
+      dockerfile: examples/demos/ocaml/Dockerfile
+    ports:
+      - "8000:8000"
+    stdin_open: true
+    tty: true

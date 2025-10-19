@@ -18,6 +18,7 @@ See [examples/demos/](examples/demos/) for full-stack integration examples:
 - **Deno** - TypeScript type sharing between client and server
 - **Erlang** - Server-side rendering with HTML morphing and gen_server state management
 - **Go** - Concurrent worker pools with true parallelism
+- **OCaml** - Pattern matching with type-safe state machines using algebraic data types
 - **PHP** - Vanilla PHP with no framework dependencies
 - **Rust** - Embedded SQLite database with type safety
 - **Zig** - Blazingly fast with zero dependencies
