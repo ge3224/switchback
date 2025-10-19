@@ -1,5 +1,9 @@
+version: '3.8'
+
 services:
   asm:
+    container_name: switchback_asm
+    image: switchback-asm:latest
     build:
       context: ../../..
       dockerfile: examples/demos/asm/Dockerfile
