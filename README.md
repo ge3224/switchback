@@ -20,7 +20,7 @@ See [examples/demos/](examples/demos/) for full-stack integration examples:
 - **Go** - Concurrent worker pools with true parallelism
 - **OCaml** - Pattern matching with type-safe state machines using algebraic data types
 - **PHP** - Vanilla PHP with no framework dependencies
-- **Rust** - Embedded SQLite database with type safety
+- **Rust** - Image processing pipeline with partial reloads and upload progress tracking
 - **Zig** - Blazingly fast with zero dependencies
 - **Assembly** - x86-64 assembly with NASM (because why not?)
 

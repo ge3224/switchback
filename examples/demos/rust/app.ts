@@ -1,6 +1,6 @@
 import { newSwitchback } from '../../../src/index.ts';
 
-console.log('🦀 Product Catalog app starting...');
+console.log('🖼️ Image Processing Pipeline app starting...');
 
 // Simple JSX-like helper
 function h(tag: string, props: any = {}, ...children: any[]) {
@@ -31,10 +31,44 @@ function h(tag: string, props: any = {}, ...children: any[]) {
 
 // Global state
 const state = {
-  products: [] as any[],
-  categories: [] as any[],
-  currentProduct: null as any,
-  loading: false,
+  // Upload tracking
+  uploads: {} as Record<string, {
+    file: File;
+    progress: number;
+    status: 'uploading' | 'queued' | 'processing' | 'complete' | 'failed';
+    jobId?: string;
+    error?: string;
+  }>,
+
+  // Processing jobs
+  jobs: {} as Record<string, {
+    id: string;
+    filename: string;
+    status: 'pending' | 'queued' | 'processing' | 'complete' | 'failed';
+    progress: number;
+    worker_id?: number;
+    created_at: number;
+    completed_at?: number;
+    error?: string;
+    result_urls: string[];
+  }>,
+
+  // UI control
+  isProcessing: false,
+
+  // Gallery
+  gallery: [] as Array<{
+    id: string;
+    filename: string;
+    thumbnail_url: string;
+    medium_url: string;
+    grayscale_url: string;
+    created_at: number;
+  }>,
+
+  // UI state
+  selectedImage: null as any,
+  pollInterval: null as number | null,
 };
 
 // Inject styles
@@ -43,636 +77,910 @@ style.textContent = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: #f5f7fa;
-    color: #333;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
-
-  nav {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 1rem 2rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    min-height: 100vh;
+    color: #333;
   }
 
-  nav .nav-content {
-    max-width: 1400px;
+  .container {
+    max-width: 1200px;
     margin: 0 auto;
+    padding: 20px;
+  }
+
+  .header {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .header h1 {
+    font-size: 28px;
+    margin-bottom: 8px;
+    color: #667eea;
+  }
+
+  .header p {
+    color: #666;
+    font-size: 14px;
+  }
+
+  .upload-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .upload-section h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: #333;
+  }
+
+  .file-input-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  .file-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .file-input-label {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #667eea;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+
+  .file-input-label:hover {
+    background: #5568d3;
+  }
+
+  .upload-button {
+    padding: 12px 32px;
+    background: #764ba2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-left: 12px;
+  }
+
+  .upload-button:hover {
+    background: #653a8a;
+  }
+
+  .upload-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  .upload-progress {
+    margin-top: 16px;
+  }
+
+  .upload-item {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+
+  .upload-item-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 2rem;
+    margin-bottom: 8px;
   }
 
-  nav h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-
-  nav .search-box {
-    flex: 1;
-    max-width: 400px;
-  }
-
-  nav input {
-    width: 100%;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    border: none;
-    font-size: 0.95rem;
-  }
-
-  nav .nav-links {
-    display: flex;
-    gap: 1.5rem;
-  }
-
-  nav a {
-    color: white;
-    text-decoration: none;
+  .upload-item-name {
     font-weight: 500;
-    transition: opacity 0.2s;
+    font-size: 14px;
   }
 
-  nav a:hover {
-    opacity: 0.8;
+  .upload-item-status {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
   }
 
-  main {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem;
+  .status-uploading {
+    background: #fff4e5;
+    color: #f39c12;
   }
 
-  .hero {
-    background: white;
-    border-radius: 12px;
-    padding: 3rem 2rem;
-    text-align: center;
-    margin-bottom: 2rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  }
-
-  .hero h2 {
-    font-size: 2.5rem;
-    color: #667eea;
-    margin-bottom: 1rem;
-  }
-
-  .hero p {
-    font-size: 1.1rem;
+  .status-pending {
+    background: #f5f5f5;
     color: #666;
-    margin-bottom: 0.5rem;
   }
 
-  .hero .tech-badge {
-    display: inline-block;
-    background: #f0f0f0;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    margin: 0.5rem;
-    font-size: 0.9rem;
-    font-weight: 500;
+  .status-queued {
+    background: #e3f2fd;
+    color: #2196f3;
   }
 
-  .category-filters {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
+  .status-complete {
+    background: #e8f5e9;
+    color: #4caf50;
   }
 
-  .category-btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: 25px;
-    border: 2px solid #e0e0e0;
-    background: white;
-    cursor: pointer;
-    font-size: 0.95rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  .progress-bar {
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    overflow: hidden;
   }
 
-  .category-btn:hover {
-    border-color: #667eea;
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+  .progress-fill {
+    height: 100%;
+    background: #667eea;
+    transition: width 0.3s ease;
   }
 
-  .category-btn.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-color: #667eea;
-  }
-
-  .product-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .product-card {
+  .queue-section {
     background: white;
     border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .queue-section h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: #333;
+  }
+
+  .job-card {
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid #667eea;
+  }
+
+  .job-card.processing {
+    border-left-color: #f39c12;
+    animation: pulse 2s infinite;
+  }
+
+  .job-card.complete {
+    border-left-color: #4caf50;
+  }
+
+  .job-card.failed {
+    border-left-color: #e74c3c;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+
+  .job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .job-title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .job-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .badge-pending {
+    background: #f5f5f5;
+    color: #666;
+  }
+
+  .badge-queued {
+    background: #e3f2fd;
+    color: #2196f3;
+  }
+
+  .badge-processing {
+    background: #fff4e5;
+    color: #f39c12;
+  }
+
+  .badge-complete {
+    background: #e8f5e9;
+    color: #4caf50;
+  }
+
+  .badge-failed {
+    background: #ffebee;
+    color: #e74c3c;
+  }
+
+  .job-meta {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+  }
+
+  .gallery-section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .gallery-section h2 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: #333;
+  }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .gallery-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
     cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    display: block;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background: #f5f5f5;
   }
 
-  .product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  .gallery-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 
-  .product-icon {
+  .gallery-item img {
     width: 100%;
     height: 200px;
     object-fit: cover;
-    border-radius: 8px;
-    margin-bottom: 1rem;
+    display: block;
   }
 
-  .product-name {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #333;
-  }
-
-  .product-description {
-    font-size: 0.9rem;
+  .gallery-item-info {
+    padding: 8px;
+    font-size: 12px;
     color: #666;
-    margin-bottom: 1rem;
-    line-height: 1.4;
   }
 
-  .product-category {
-    display: inline-block;
-    background: #f0f0f0;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    color: #667eea;
-    margin-bottom: 1rem;
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: #999;
   }
 
-  .product-footer {
+  .empty-state svg {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #f0f0f0;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
   }
 
-  .product-price {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #667eea;
-  }
-
-  .product-stock {
-    font-size: 0.85rem;
-    color: #666;
-  }
-
-  .product-stock.low {
-    color: #ff6b6b;
-    font-weight: 500;
-  }
-
-  .product-detail {
+  .modal-content {
     background: white;
     border-radius: 12px;
-    padding: 3rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+    padding: 24px;
   }
 
-  .product-detail-header {
-    display: grid;
-    grid-template-columns: 400px 1fr;
-    gap: 3rem;
-    margin-bottom: 2rem;
-  }
-
-  .product-detail-icon {
-    width: 100%;
-    height: 400px;
-    object-fit: cover;
-    border-radius: 12px;
-  }
-
-  .product-detail-info h2 {
-    font-size: 2.5rem;
-    color: #333;
-    margin-bottom: 1rem;
-  }
-
-  .product-detail-info .price-large {
-    font-size: 3rem;
-    color: #667eea;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-
-  .back-button {
-    display: inline-block;
-    padding: 0.75rem 1.5rem;
-    background: #667eea;
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(0, 0, 0, 0.5);
     color: white;
-    text-decoration: none;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .modal-close:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .modal-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .modal-image {
     border-radius: 8px;
-    font-weight: 500;
-    transition: all 0.2s;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    overflow: hidden;
   }
 
-  .back-button:hover {
-    background: #5568d3;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  .modal-image img {
+    width: 100%;
+    height: auto;
+    display: block;
   }
 
-  .loading-spinner {
+  .modal-image-label {
+    padding: 8px;
+    background: #f5f5f5;
     text-align: center;
-    padding: 4rem 2rem;
-    font-size: 3rem;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
   }
 
-  .info-box {
-    background: #e8f4f8;
-    border-left: 4px solid #667eea;
-    padding: 1.5rem;
-    border-radius: 8px;
-    margin: 2rem 0;
+  .selected-files {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #666;
   }
 
-  .info-box h3 {
+  .footer {
+    background: white;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-top: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+  }
+
+  .footer a {
     color: #667eea;
-    margin-bottom: 0.5rem;
+    text-decoration: none;
   }
 
-  .info-box ul {
-    margin-left: 1.5rem;
-    color: #555;
-  }
-
-  .info-box li {
-    margin: 0.25rem 0;
+  .footer a:hover {
+    text-decoration: underline;
   }
 `;
 document.head.appendChild(style);
 
-// API helpers
-async function fetchProducts(categoryId?: number) {
-  const url = categoryId
-    ? `/api/category/${categoryId}`
-    : '/api/products';
-  const response = await fetch(url);
-  return response.json();
+// Load sample images
+async function loadSampleImages() {
+  const sampleFiles = [
+    '/samples/sample1.jpg',
+    '/samples/sample2.jpg',
+    '/samples/sample3.jpg',
+    '/samples/sample4.jpg',
+    '/samples/sample5.jpg',
+  ];
+
+  // Fetch and convert to File objects
+  const files: File[] = [];
+  for (const url of sampleFiles) {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const filename = url.split('/').pop() || 'sample.jpg';
+      const file = new File([blob], filename, { type: 'image/jpeg' });
+      files.push(file);
+    } catch (error) {
+      console.error(`Failed to load ${url}:`, error);
+    }
+  }
+
+  if (files.length === 0) {
+    alert('Failed to load sample images');
+    return;
+  }
+
+  // Upload the sample files
+  await uploadFiles(files);
 }
 
-async function fetchProduct(id: number) {
-  const response = await fetch(`/api/products/${id}`);
-  return response.json();
+// File input change handler - auto-upload on selection
+async function handleFileSelect() {
+  const fileInput = document.getElementById('file-input') as HTMLInputElement;
+  const files = fileInput?.files;
+
+  if (!files || files.length === 0) {
+    return;
+  }
+
+  await uploadFiles(Array.from(files));
+
+  // Clear file input so the same files can be selected again
+  if (fileInput) fileInput.value = '';
 }
 
-async function fetchCategories() {
-  const response = await fetch('/api/categories');
-  return response.json();
+// Common upload logic
+async function uploadFiles(files: File[]) {
+  // Initialize upload tracking for each file
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    state.uploads[file.name] = {
+      file,
+      progress: 0,
+      status: 'uploading',
+    };
+  }
+
+  app.reload({ only: ['uploadProgress'] });
+
+  // Upload files sequentially (could be parallel, but sequential is easier to follow)
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    await uploadSingleFile(file);
+  }
+
+  // Don't start polling - user must click "Process Images" first
 }
 
-async function searchProducts(query: string) {
-  const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-  return response.json();
+async function uploadSingleFile(file: File) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    // Track upload progress
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        state.uploads[file.name].progress = Math.round((e.loaded / e.total) * 100);
+        app.reload({ only: ['uploadProgress'] });
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const result = JSON.parse(xhr.responseText);
+        if (result.success) {
+          state.uploads[file.name].status = 'complete';
+          state.uploads[file.name].jobId = result.job_id;
+
+          // Add to jobs tracking (status: pending until "Process Images" is clicked)
+          state.jobs[result.job_id] = {
+            id: result.job_id,
+            filename: file.name,
+            status: 'pending',
+            progress: 0,
+            created_at: Date.now(),
+            result_urls: [],
+          };
+
+          app.reload({ only: ['uploadProgress', 'processingQueue'] });
+          resolve(result);
+        } else {
+          state.uploads[file.name].status = 'failed';
+          state.uploads[file.name].error = result.error;
+          app.reload({ only: ['uploadProgress'] });
+          reject(new Error(result.error));
+        }
+      } else {
+        state.uploads[file.name].status = 'failed';
+        state.uploads[file.name].error = 'Upload failed';
+        app.reload({ only: ['uploadProgress'] });
+        reject(new Error('Upload failed'));
+      }
+    };
+
+    xhr.onerror = () => {
+      state.uploads[file.name].status = 'failed';
+      state.uploads[file.name].error = 'Network error';
+      app.reload({ only: ['uploadProgress'] });
+      reject(new Error('Network error'));
+    };
+
+    xhr.open('POST', '/api/upload');
+    xhr.send(formData);
+  });
 }
 
-// Layout component
-function Layout(children: Node) {
-  const nav = h('nav', {},
-    h('div', { class: 'nav-content' },
-      h('h1', {}, '🦀 Rust Product Catalog'),
-      h('div', { class: 'search-box' },
-        h('input', {
-          type: 'text',
-          placeholder: 'Search products...',
-          onKeypress: (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-              const query = (e.target as HTMLInputElement).value;
-              if (query) {
-                e.preventDefault();
-                state.products = []; // Clear products to force refetch
-                app.visit(`/search?q=${encodeURIComponent(query)}`);
-              }
-            }
+// Start processing queued images
+async function processImages() {
+  const pendingJobs = Object.values(state.jobs).filter(job => job.status === 'pending');
+
+  if (pendingJobs.length === 0) {
+    alert('No images in queue to process');
+    return;
+  }
+
+  state.isProcessing = true;
+  app.reload({ only: ['processingQueue'] });
+
+  // Send all pending job IDs to the server to start processing
+  const jobIds = pendingJobs.map(job => job.id);
+
+  try {
+    const response = await fetch('/api/process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ job_ids: jobIds }),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // Update all jobs to queued status
+      jobIds.forEach(id => {
+        if (state.jobs[id]) {
+          state.jobs[id].status = 'queued';
+        }
+      });
+
+      app.reload({ only: ['processingQueue'] });
+
+      // Start polling for job status
+      startPolling();
+    } else {
+      alert('Failed to start processing: ' + result.error);
+      state.isProcessing = false;
+      app.reload({ only: ['processingQueue'] });
+    }
+  } catch (error) {
+    console.error('Failed to start processing:', error);
+    alert('Failed to start processing');
+    state.isProcessing = false;
+    app.reload({ only: ['processingQueue'] });
+  }
+}
+
+// Polling for job status
+function startPolling() {
+  if (state.pollInterval) return; // Already polling
+
+  state.pollInterval = window.setInterval(async () => {
+    const activeJobIds = Object.values(state.jobs)
+      .filter(job => job.status === 'queued' || job.status === 'processing')
+      .map(job => job.id);
+
+    if (activeJobIds.length === 0) {
+      // No active jobs, stop polling
+      if (state.pollInterval) {
+        clearInterval(state.pollInterval);
+        state.pollInterval = null;
+        state.isProcessing = false;
+        app.reload({ only: ['processingQueue'] });
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/jobs?ids=${activeJobIds.join(',')}`);
+      const jobs = await response.json();
+
+      let queueChanged = false;
+      let galleryChanged = false;
+
+      jobs.forEach((job: any) => {
+        const prevStatus = state.jobs[job.id]?.status;
+
+        // Update job
+        state.jobs[job.id] = job;
+
+        if (prevStatus !== job.status) {
+          queueChanged = true;
+
+          // If job completed, fetch updated gallery
+          if (job.status === 'complete') {
+            galleryChanged = true;
           }
-        })
+        }
+      });
+
+      // Partial reload - only update changed sections
+      const sections = [];
+      if (queueChanged) sections.push('processingQueue');
+      if (galleryChanged) {
+        sections.push('gallery');
+        // Fetch updated gallery
+        fetchGallery();
+      }
+
+      if (sections.length > 0) {
+        app.reload({ only: sections });
+      }
+    } catch (error) {
+      console.error('Failed to poll job status:', error);
+    }
+  }, 2000); // Poll every 2 seconds
+}
+
+async function fetchGallery() {
+  try {
+    const response = await fetch('/api/gallery');
+    const gallery = await response.json();
+    state.gallery = gallery;
+  } catch (error) {
+    console.error('Failed to fetch gallery:', error);
+  }
+}
+
+function openImageModal(image: any) {
+  state.selectedImage = image;
+  app.reload({ only: ['modal'] });
+}
+
+function closeModal() {
+  state.selectedImage = null;
+  app.reload({ only: ['modal'] });
+}
+
+// Components
+
+function UploadSection() {
+  const uploadingCount = Object.values(state.uploads).filter(u => u.status === 'uploading').length;
+  const isUploading = uploadingCount > 0;
+
+  return h('div', { class: 'upload-section', 'data-swbk-section': 'uploadSection' },
+    h('h2', {}, '📤 Upload Images'),
+    h('p', { style: { marginBottom: '16px', color: '#666', fontSize: '14px' } },
+      'Select images to add to the queue. Click "Process Images" when ready to start processing.'
+    ),
+    h('div', { style: { marginBottom: '12px' } },
+      h('div', { class: 'file-input-wrapper' },
+        h('input', {
+          type: 'file',
+          id: 'file-input',
+          class: 'file-input',
+          multiple: true,
+          accept: 'image/*',
+          onChange: handleFileSelect
+        }),
+        (() => {
+          const label = h('label', {
+            for: 'file-input',
+            class: 'file-input-label'
+          }, isUploading ? 'Uploading...' : '📁 Choose Images');
+
+          // Disable pointer events when uploading
+          if (isUploading) {
+            label.style.opacity = '0.6';
+            label.style.cursor = 'not-allowed';
+          }
+
+          return label;
+        })()
       ),
-      h('div', { class: 'nav-links' },
-        h('a', { href: '/' }, 'All Products')
+      h('span', { style: { color: '#999', fontSize: '14px', marginLeft: '12px', marginRight: '12px' } }, 'OR'),
+      (() => {
+        const btn = h('button', {
+          class: 'upload-button',
+          style: { background: '#10b981', marginLeft: '0' },
+          onClick: loadSampleImages
+        }, isUploading ? 'Loading...' : '🎨 Try Sample Images');
+
+        if (isUploading) {
+          btn.setAttribute('disabled', 'true');
+        }
+
+        return btn;
+      })()
+    )
+  );
+}
+
+function UploadProgress() {
+  const uploads = Object.entries(state.uploads);
+
+  if (uploads.length === 0) return null;
+
+  return h('div', { class: 'upload-progress', 'data-swbk-section': 'uploadProgress' },
+    ...uploads.map(([filename, upload]) =>
+      h('div', { class: 'upload-item' },
+        h('div', { class: 'upload-item-header' },
+          h('span', { class: 'upload-item-name' }, filename),
+          h('span', {
+            class: `upload-item-status status-${upload.status}`
+          }, upload.status.toUpperCase())
+        ),
+        h('div', { class: 'progress-bar' },
+          h('div', {
+            class: 'progress-fill',
+            style: { width: `${upload.progress}%` }
+          })
+        ),
+        upload.error ? h('div', { style: { color: '#e74c3c', fontSize: '12px', marginTop: '4px' } },
+          upload.error
+        ) : null
       )
     )
   );
-
-  const main = h('main', {}, children);
-
-  const container = h('div', {});
-  container.appendChild(nav);
-  container.appendChild(main);
-  return container;
 }
 
-// Page Components
-const pages: Record<string, (props: any) => Node> = {
-  'Home': () => {
-    // Fetch products and categories only if we don't have them
-    if (state.products.length === 0 || state.categories.length === 0) {
-      Promise.all([fetchProducts(), fetchCategories()]).then(([products, categories]) => {
-        state.products = products;
-        state.categories = categories;
-        app.reload();
-      });
-    }
+function ProcessingQueue() {
+  const pendingJobs = Object.values(state.jobs).filter(job => job.status === 'pending');
+  const activeJobs = Object.values(state.jobs).filter(job =>
+    job.status === 'queued' || job.status === 'processing'
+  );
+  const allJobs = [...pendingJobs, ...activeJobs];
 
-    return Layout(
+  return h('div', { class: 'queue-section', 'data-swbk-section': 'processingQueue' },
+    h('h2', {}, '⚙️ Processing Queue'),
+
+    // Process Images button (only show if there are pending jobs)
+    pendingJobs.length > 0 ? h('div', { style: { marginBottom: '16px' } },
+      (() => {
+        const btn = h('button', {
+          class: 'upload-button',
+          style: { marginLeft: '0', background: '#10b981' },
+          onClick: processImages
+        }, state.isProcessing ? 'Processing...' : `⚡ Process ${pendingJobs.length} Image${pendingJobs.length !== 1 ? 's' : ''}`);
+
+        if (state.isProcessing) {
+          btn.setAttribute('disabled', 'true');
+        }
+
+        return btn;
+      })()
+    ) : null,
+
+    allJobs.length === 0 ?
+      h('div', { class: 'empty-state' },
+        h('p', {}, 'No jobs in queue. Upload some images to get started!')
+      ) :
       h('div', {},
-        h('div', { class: 'hero' },
-          h('h2', {}, '⚡ Switchback + Rust Backend'),
-          h('p', {}, 'Client-side routing meets server-side power'),
-          h('p', {}, 'Fast SPA navigation with type-safe Rust API endpoints'),
-          h('div', {},
-            h('span', { class: 'tech-badge' }, '⚡ Switchback SPA'),
-            h('span', { class: 'tech-badge' }, '🦀 Rust API'),
-            h('span', { class: 'tech-badge' }, '🔄 JSON Data Flow')
+        ...allJobs.map(job =>
+          h('div', { class: `job-card ${job.status}` },
+            h('div', { class: 'job-header' },
+              h('span', { class: 'job-title' }, job.filename),
+              h('span', { class: `job-badge badge-${job.status}` }, job.status)
+            ),
+            h('div', { class: 'job-meta' },
+              job.status === 'pending' ? 'Waiting to start...' :
+              job.worker_id !== undefined ?
+                `Worker ${job.worker_id} • ${job.progress}% complete` :
+                'Waiting for worker...'
+            ),
+            h('div', { class: 'progress-bar' },
+              h('div', {
+                class: 'progress-fill',
+                style: { width: `${job.progress}%` }
+              })
+            ),
+            job.error ? h('div', { style: { color: '#e74c3c', fontSize: '12px', marginTop: '8px' } },
+              `Error: ${job.error}`
+            ) : null
           )
-        ),
-
-        state.categories.length > 0 ? h('div', { class: 'category-filters' },
-          h('button', {
-            class: 'category-btn active',
-            onClick: (e: Event) => {
-              e.preventDefault();
-              state.products = []; // Clear products to force refetch
-              app.visit('/');
-            }
-          }, 'All Products'),
-          ...state.categories.map((cat: any) =>
-            h('button', {
-              class: 'category-btn',
-              onClick: (e: Event) => {
-                e.preventDefault();
-                state.products = []; // Clear products to force refetch
-                app.visit(`/category/${cat.id}`);
-              }
-            }, cat.name)
-          )
-        ) : null,
-
-        state.products.length > 0 ? h('div', { class: 'product-grid' },
-          ...state.products.map((product: any) =>
-            h('a', {
-              href: `/product/${product.id}`,
-              class: 'product-card',
-              onClick: (e: Event) => {
-                e.preventDefault();
-                app.visit(`/product/${product.id}`);
-              }
-            },
-              h('img', { class: 'product-icon', src: product.image_url, alt: product.name }),
-              h('div', { class: 'product-category' }, product.category_name),
-              h('div', { class: 'product-name' }, product.name),
-              h('div', { class: 'product-description' }, product.description),
-              h('div', { class: 'product-footer' },
-                h('div', { class: 'product-price' }, `$${product.price.toFixed(2)}`),
-                h('div', { class: product.stock < 50 ? 'product-stock low' : 'product-stock' },
-                  `${product.stock} in stock`
-                )
-              )
-            )
-          )
-        ) : h('div', { class: 'loading-spinner' }, '⏳'),
-
-        h('div', { class: 'info-box' },
-          h('h3', {}, '🔗 How Switchback + Rust Work Together'),
-          h('p', {}, 'This demo showcases seamless frontend/backend interplay:'),
-          h('ul', {},
-            h('li', {}, '⚡ Switchback: app.visit() enables instant client-side navigation - zero page reloads'),
-            h('li', {}, '🦀 Rust: Provides fast RESTful JSON API endpoints with compile-time type safety'),
-            h('li', {}, '🔄 Data Flow: Switchback fetches from /api/* endpoints, Rust returns JSON, component re-renders'),
-            h('li', {}, '🔍 Features: Category filtering, search, product details - all without page refreshes'),
-            h('li', {}, '🚀 Result: SPA-level UX with backend flexibility - use any database, any hosting platform')
-          ),
-          h('p', { style: { marginTop: '1rem', fontWeight: '500' } }, 'Try clicking categories or products - notice the instant transitions!')
         )
       )
-    );
-  },
+  );
+}
 
-  'CategoryPage': (props: { categoryId: number }) => {
-    // Only fetch if needed
-    if (state.products.length === 0) {
-      fetchProducts(props.categoryId).then((products) => {
-        state.products = products;
-        app.reload();
-      });
-    }
-
-    if (state.categories.length === 0) {
-      fetchCategories().then((categories) => {
-        state.categories = categories;
-        app.reload();
-      });
-    }
-
-    const currentCategory = state.categories.find((c: any) => c.id === props.categoryId);
-
-    return Layout(
-      h('div', {},
-        h('div', { class: 'hero' },
-          h('h2', {}, currentCategory ? currentCategory.name : 'Category'),
-          currentCategory ? h('p', {}, currentCategory.description) : null
-        ),
-
-        h('div', { class: 'category-filters' },
-          h('button', {
-            class: 'category-btn',
-            onClick: (e: Event) => {
-              e.preventDefault();
-              state.products = [];
-              app.visit('/');
-            }
-          }, 'All Products'),
-          ...state.categories.map((cat: any) =>
-            h('button', {
-              class: cat.id === props.categoryId ? 'category-btn active' : 'category-btn',
-              onClick: (e: Event) => {
-                e.preventDefault();
-                state.products = [];
-                app.visit(`/category/${cat.id}`);
-              }
-            }, cat.name)
+function Gallery(props: { gallery: any[] }) {
+  return h('div', { class: 'gallery-section', 'data-swbk-section': 'gallery' },
+    h('h2', {}, '🖼️ Gallery'),
+    props.gallery.length === 0 ?
+      h('div', { class: 'empty-state' },
+        h('p', {}, 'No images yet. Upload some images to get started!')
+      ) :
+      h('div', { class: 'gallery-grid' },
+        ...props.gallery.map(image =>
+          h('div', { class: 'gallery-item', onClick: () => openImageModal(image) },
+            h('img', { src: image.thumbnail_url, alt: image.filename }),
+            h('div', { class: 'gallery-item-info' }, image.filename)
           )
+        )
+      )
+  );
+}
+
+function ImageModal() {
+  if (!state.selectedImage) return null;
+
+  const image = state.selectedImage;
+
+  return h('div', { class: 'modal', 'data-swbk-section': 'modal', onClick: closeModal },
+    h('div', { class: 'modal-content', onClick: (e: Event) => e.stopPropagation() },
+      h('button', { class: 'modal-close', onClick: closeModal }, '×'),
+      h('h2', {}, image.filename),
+      h('div', { class: 'modal-images' },
+        h('div', { class: 'modal-image' },
+          h('img', { src: image.thumbnail_url, alt: 'Thumbnail' }),
+          h('div', { class: 'modal-image-label' }, 'Thumbnail (200x200)')
         ),
-
-        state.products.length > 0 ? h('div', { class: 'product-grid' },
-          ...state.products.map((product: any) =>
-            h('a', {
-              href: `/product/${product.id}`,
-              class: 'product-card',
-              onClick: (e: Event) => {
-                e.preventDefault();
-                app.visit(`/product/${product.id}`);
-              }
-            },
-              h('img', { class: 'product-icon', src: product.image_url, alt: product.name }),
-              h('div', { class: 'product-name' }, product.name),
-              h('div', { class: 'product-description' }, product.description),
-              h('div', { class: 'product-footer' },
-                h('div', { class: 'product-price' }, `$${product.price.toFixed(2)}`),
-                h('div', { class: product.stock < 50 ? 'product-stock low' : 'product-stock' },
-                  `${product.stock} in stock`
-                )
-              )
-            )
-          )
-        ) : h('div', { class: 'loading-spinner' }, '⏳')
-      )
-    );
-  },
-
-  'ProductPage': (props: { productId: number }) => {
-    // Only fetch if we don't have the product or it's a different product
-    if (!state.currentProduct || state.currentProduct.id !== props.productId) {
-      state.currentProduct = null; // Clear current product
-      fetchProduct(props.productId).then((p) => {
-        state.currentProduct = p;
-        app.reload();
-      });
-    }
-
-    return Layout(
-      h('div', {},
-        state.currentProduct ? h('div', { class: 'product-detail' },
-          h('div', { class: 'product-detail-header' },
-            h('img', { class: 'product-detail-icon', src: state.currentProduct.image_url, alt: state.currentProduct.name }),
-            h('div', { class: 'product-detail-info' },
-              h('div', { class: 'product-category' }, state.currentProduct.category_name),
-              h('h2', {}, state.currentProduct.name),
-              h('p', { style: { fontSize: '1.2rem', color: '#666', marginBottom: '2rem' } }, state.currentProduct.description),
-              h('div', { class: 'price-large' }, `$${state.currentProduct.price.toFixed(2)}`),
-              h('p', { class: state.currentProduct.stock < 50 ? 'product-stock low' : 'product-stock', style: { fontSize: '1.1rem' } },
-                `${state.currentProduct.stock} units in stock`
-              )
-            )
-          ),
-          h('a', {
-            href: '/',
-            class: 'back-button',
-            onClick: (e: Event) => {
-              e.preventDefault();
-              state.products = [];
-              app.visit('/');
-            }
-          }, '← Back to Products')
-        ) : h('div', { class: 'loading-spinner' }, '⏳')
-      )
-    );
-  },
-
-  'SearchPage': () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const query = urlParams.get('q') || '';
-
-    // Only search if we don't have products or query changed
-    if (query && state.products.length === 0) {
-      searchProducts(query).then((products) => {
-        state.products = products;
-        app.reload();
-      });
-    }
-
-    return Layout(
-      h('div', {},
-        h('div', { class: 'hero' },
-          h('h2', {}, `🔍 Search Results for "${query}"`),
-          h('p', {}, `Found ${state.products.length} products`)
+        h('div', { class: 'modal-image' },
+          h('img', { src: image.medium_url, alt: 'Medium' }),
+          h('div', { class: 'modal-image-label' }, 'Medium (800x800)')
         ),
-
-        state.products.length > 0 ? h('div', { class: 'product-grid' },
-          ...state.products.map((product: any) =>
-            h('a', {
-              href: `/product/${product.id}`,
-              class: 'product-card',
-              onClick: (e: Event) => {
-                e.preventDefault();
-                app.visit(`/product/${product.id}`);
-              }
-            },
-              h('img', { class: 'product-icon', src: product.image_url, alt: product.name }),
-              h('div', { class: 'product-category' }, product.category_name),
-              h('div', { class: 'product-name' }, product.name),
-              h('div', { class: 'product-description' }, product.description),
-              h('div', { class: 'product-footer' },
-                h('div', { class: 'product-price' }, `$${product.price.toFixed(2)}`),
-                h('div', { class: product.stock < 50 ? 'product-stock low' : 'product-stock' },
-                  `${product.stock} in stock`
-                )
-              )
-            )
-          )
-        ) : query ? h('div', { style: { textAlign: 'center', padding: '3rem' } },
-          h('p', { style: { fontSize: '1.2rem', color: '#666' } }, 'No products found')
-        ) : null,
-
-        h('a', {
-          href: '/',
-          class: 'back-button',
-          style: { marginTop: '2rem' },
-          onClick: (e: Event) => {
-            e.preventDefault();
-            state.products = [];
-            app.visit('/');
-          }
-        }, '← Back to All Products')
+        h('div', { class: 'modal-image' },
+          h('img', { src: image.grayscale_url, alt: 'Grayscale' }),
+          h('div', { class: 'modal-image-label' }, 'Grayscale Filter')
+        )
       )
-    );
-  },
+    )
+  );
+}
+
+function Footer() {
+  return h('div', { class: 'footer' },
+    h('p', {},
+      'Sample photos from ',
+      h('a', { href: 'https://unsplash.com', target: '_blank', rel: 'noopener' }, 'Unsplash'),
+      ' • Free to use under the ',
+      h('a', { href: 'https://unsplash.com/license', target: '_blank', rel: 'noopener' }, 'Unsplash License')
+    )
+  );
+}
+
+function Home(props: { gallery: any[] }) {
+  // Initialize gallery state
+  if (props.gallery) {
+    state.gallery = props.gallery;
+  }
+
+  return h('div', { class: 'container' },
+    h('div', { class: 'header' },
+      h('h1', {}, '🦀 Rust + Switchback: Image Processing Pipeline'),
+      h('p', {}, 'Upload multiple images and watch them process in real-time with partial UI updates!')
+    ),
+
+    UploadSection(),
+    UploadProgress(),
+    ProcessingQueue(),
+    Gallery({ gallery: state.gallery }),
+    Footer(),
+    ImageModal()
+  );
+}
+
+// Page mapping
+const pages = {
+  'Home': Home,
 };
 
 // Initialize Switchback
-let app: any; // Declare globally so we can use it in components
-
-app = newSwitchback({
+const app = newSwitchback({
   resolve: (name: string) => {
-    const component = pages[name];
-    if (!component) {
-      throw new Error(`Component "${name}" not found`);
-    }
-    return component;
+    return pages[name as keyof typeof pages];
   },
-
   setup: ({ el, App, props }) => {
     el.innerHTML = '';
     el.appendChild(App(props));
   },
-
   initialPage: (window as any).initialPage,
-
-  progress: {
-    delay: 250,
-    color: '#667eea',
-    includeCSS: true,
-    showSpinner: true,
-  },
 });
 
-console.log('🦀 Product Catalog app initialized!');
+// Expose state for debugging
+(window as any).debugState = state;
+
+console.log('✅ Image Processing Pipeline app ready!');
+console.log('Initial upload state:', state.uploads);
