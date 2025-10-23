@@ -1,13 +1,48 @@
-# C Demo - Switchback Integration
+# C Demo - Optimistic Updates with C Backend
 
-A minimal example showing how to integrate Switchback with a classic C HTTP server. Demonstrates **optimistic updates** for instant UI feedback!
+A single-page example showing how Switchback enables **optimistic updates** with a pure C HTTP server. The UI updates instantly before the server responds, providing a native app-like experience.
+
+## What This Demo Shows
+
+### Optimistic Updates Pattern
+
+**Backend (server.c):**
+- C server handles API routes and serves a single page
+- Returns `{component, props, url}` JSON with both stats and todos
+- RESTful API for todos: POST, DELETE, and PATCH operations
+- Artificial delays (300ms for adds, 200ms for likes) make optimistic behavior visible
+
+**Frontend (app.ts):**
+- Single-page app with all features on one screen
+- UI updates **instantly** when user takes action
+- Visual feedback: dashed border while pending, solid when confirmed
+- Graceful rollback on errors with custom styled modals
+- No navigation - everything on one page
+
+### Key UX Features
+
+The demo showcases modern web app patterns:
+- **Instant feedback**: UI updates immediately before server responds
+- **Visual states**: Dashed border while pending, solid when confirmed
+- **Custom modals**: Styled confirmation and error dialogs matching the theme
+- **Graceful errors**: Automatic rollback with user-friendly error messages
+- **Compact layout**: Everything above the fold for easy interaction
+
+### Why It Works for C
+
+Switchback's requirements are minimal:
+- Return structured JSON
+- Detect one header
+- Serve static files
+
+This maps cleanly to C's strengths (direct HTTP handling, simple JSON formatting) without requiring framework complexity.
 
 ## What's Included
 
-- **server.c** - C HTTP server with Switchback + optimistic updates API
-- **app.ts** - Client-side Switchback app with Matrix-style green theme
-- **vite.config.ts** - Bundles app.ts + Switchback into single JS file
-- **Docker setup** - Multi-stage build with GCC compiler
+- **server.c** - Multi-threaded C HTTP server with todos API
+- **app.ts** - Single-page Switchback app with optimistic updates and Matrix-style green theme
+- **Dockerfile** - Multi-stage build
+- **docker-compose.yml** - Docker setup
 
 ## What are Optimistic Updates?
 
@@ -28,9 +63,21 @@ Optimistic updates are a UI pattern where you update the interface **immediately
 
 If the server fails, the optimistic update is rolled back and an error is shown.
 
+## Try the Optimistic Updates
+
+The app is a single page with everything visible:
+
+1. **Add a todo** - watch it appear **instantly** with a dashed border
+2. Wait ~300ms - the border becomes solid when the server confirms
+3. Click the **Like** button - it updates immediately before the server responds
+4. Click **Delete** - custom styled modal appears for confirmation
+5. Confirm delete - todo disappears instantly
+
+The UI feels instant because it doesn't wait for the server!
+
 ## Try It Out
 
-Want to see optimistic updates in action without installing a C compiler?
+The easiest way to run this demo is with Docker:
 
 ```bash
 cd examples/demos/c
@@ -39,19 +86,24 @@ docker-compose up
 
 Open http://localhost:8000
 
-## Running Natively
+## Running Locally
 
-To run this demo with a local C compiler, most systems already have GCC or Clang installed. Check with `gcc --version`.
+If you want to develop locally without Docker:
 
-## Try the Optimistic Updates
+1. **Build the frontend bundle:**
+   ```bash
+   cd examples/demos/c
+   pnpm install  # If you haven't installed root dependencies
+   pnpm build    # Creates dist/app.js
+   ```
 
-1. Navigate to the **Todos** page
-2. Add a new todo - watch it appear **instantly** with a dashed border
-3. Wait ~300ms - the border becomes solid when the server confirms
-4. Click the **Like** button - it updates immediately
-5. Delete a todo - it disappears instantly
+2. **Compile and run the C server:**
+   ```bash
+   gcc -o server server.c -pthread -O2 -Wall
+   ./server
+   ```
 
-The UI feels instant because it doesn't wait for the server!
+Most systems have GCC or Clang pre-installed. Check with `gcc --version`.
 
 ## API Endpoints
 
@@ -100,6 +152,8 @@ Response:
 ## Key Features Demonstrated
 
 - ✅ **Optimistic UI updates** - instant feedback before server confirms
+- ✅ **Custom styled modals** - no browser default dialogs
+- ✅ **Compact single-page layout** - everything above the fold
 - ✅ Multi-threaded HTTP server with pthread
 - ✅ RESTful API with JSON parsing
 - ✅ In-memory todo storage with linked list
@@ -113,10 +167,8 @@ Response:
 ```
 c/
 ├── server.c           # Backend HTTP server with todos API
-├── app.ts             # Frontend Switchback app with optimistic updates
-├── vite.config.ts     # Vite bundler config
-├── package.json       # Build scripts
-├── Dockerfile         # Docker image
+├── app.ts             # Frontend single-page app with optimistic updates
+├── Dockerfile         # Docker build
 ├── docker-compose.yml # Docker setup
 └── README.md          # This file
 ```
@@ -263,9 +315,10 @@ Perfect for high-performance APIs, embedded systems, or learning systems program
 
 - **PHP Demo**: Shows basic navigation with a scripting language
 - **Zig Demo**: Shows modern systems programming with compile-time safety and form handling
-- **C Demo**: Shows classic systems programming with **optimistic updates** for instant UX
+- **Rust Demo**: Shows image processing with optimistic updates
+- **C Demo**: Single-page app focused on **optimistic updates** with custom modals and compact layout
 
-All three demonstrate different Switchback features with different language paradigms and trade-offs.
+Each demo showcases different Switchback features with different language paradigms and UX patterns.
 
 ## Learn More About Optimistic Updates
 

@@ -333,17 +333,11 @@ char *handle_api_route(HttpRequest *req) {
 char *handle_page_route(HttpRequest *req) {
     char *json = malloc(8192);
 
+    // Only serve home page now (which contains everything)
     if (strcmp(req->uri, "/") == 0) {
         pthread_mutex_lock(&todos_mutex);
         int todo_count = count_todos();
         int likes = total_likes;
-        pthread_mutex_unlock(&todos_mutex);
-
-        snprintf(json, 8192,
-            "{\"component\":\"Home\",\"props\":{\"stats\":{\"todos\":%d,\"totalLikes\":%d,\"framework\":\"C99\"}},\"url\":\"/\"}",
-            todo_count, likes);
-    } else if (strcmp(req->uri, "/todos") == 0) {
-        pthread_mutex_lock(&todos_mutex);
 
         char todos_json[4096];
         build_todos_json(todos_json, sizeof(todos_json));
@@ -351,11 +345,8 @@ char *handle_page_route(HttpRequest *req) {
         pthread_mutex_unlock(&todos_mutex);
 
         snprintf(json, 8192,
-            "{\"component\":\"Todos\",\"props\":{\"todos\":%s},\"url\":\"/todos\"}",
-            todos_json);
-    } else if (strcmp(req->uri, "/about") == 0) {
-        snprintf(json, 8192,
-            "{\"component\":\"About\",\"props\":{\"version\":\"1.0.0\",\"backend\":\"C99\",\"features\":[\"Optimistic updates\",\"Multi-threaded HTTP server\",\"In-memory todo storage\",\"Manual memory management\",\"POSIX sockets\"]},\"url\":\"/about\"}");
+            "{\"component\":\"Home\",\"props\":{\"stats\":{\"todos\":%d,\"totalLikes\":%d,\"framework\":\"C99\"},\"todos\":%s},\"url\":\"/\"}",
+            todo_count, likes, todos_json);
     } else {
         snprintf(json, 8192,
             "{\"component\":\"Error\",\"props\":{\"message\":\"Page not found\"},\"url\":\"%s\"}",
@@ -562,7 +553,7 @@ int main() {
     }
 
     printf("💚 C server listening on http://0.0.0.0:%d\n", PORT);
-    printf("   Try optimistic updates at /todos!\n");
+    printf("   Try optimistic updates by adding a todo!\n");
 
     // Accept connections
     while (server_running) {

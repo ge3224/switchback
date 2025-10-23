@@ -1,29 +1,23 @@
-FROM node:20-alpine AS js-builder
+# Stage 1: Deno builder for the frontend
+# Uses Deno + esbuild for fast, dependency-free bundling
+FROM docker.io/denoland/deno:2.1.4 AS deno-builder
 
 WORKDIR /build
-
-# Copy root package files for dependencies
-COPY package.json pnpm-lock.yaml ./
-
-# Install pnpm and root dependencies
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 # Copy Switchback source
 COPY src ./src
 COPY tsconfig.json ./
 
-# Copy recipe files maintaining structure: examples/demos/c/
+# Copy demo app file
 COPY examples/demos/c/app.ts ./examples/demos/c/app.ts
-COPY examples/demos/c/vite.config.ts ./examples/demos/c/vite.config.ts
-COPY examples/demos/c/package.json ./examples/demos/c/package.json
-COPY examples/demos/c/.npmrc ./examples/demos/c/.npmrc
 
-# Build bundled app (includes Switchback)
+# Build with Deno (uses esbuild from npm via Deno's npm compatibility)
+# This is MUCH faster than npm install + vite build - no node_modules needed!
 WORKDIR /build/examples/demos/c
-RUN pnpm install --reporter=silent 2>&1 | grep -v "Ignored build scripts" || true
-RUN pnpm build
+RUN mkdir -p dist
+RUN deno run -A npm:esbuild app.ts --bundle --outfile=dist/app.js --format=esm --platform=browser
 
-# C builder stage
+# Stage 2: C builder
 FROM alpine:3.19 AS c-builder
 
 # Install GCC and build tools
@@ -37,13 +31,13 @@ COPY examples/demos/c/server.c .
 # Build C server
 RUN gcc -o server server.c -pthread -O2 -Wall
 
-# Runtime stage
+# Stage 3: Runtime
 FROM alpine:3.19
 
 WORKDIR /app
 
 # Copy built JS bundle
-COPY --from=js-builder /build/examples/demos/c/dist/app.js ./dist/app.js
+COPY --from=deno-builder /build/examples/demos/c/dist/app.js ./dist/app.js
 
 # Copy C binary
 COPY --from=c-builder /build/server ./server
