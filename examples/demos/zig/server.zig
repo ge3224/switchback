@@ -185,7 +185,7 @@ pub fn main() !void {
     server_fd_global = server.stream.handle;
 
     std.debug.print("⚡ Zig server listening on http://0.0.0.0:8000\n", .{});
-    std.debug.print("   Try form submissions at /submit!\n", .{});
+    std.debug.print("   Single-page form demo with Switchback!\n", .{});
 
     while (server_running.load(.seq_cst)) {
         // Accept connection (will be unblocked by signal handler closing socket)
@@ -286,21 +286,18 @@ fn handleRequest(allocator: mem.Allocator, connection: std.net.Server.Connection
     // Build JSON response
     var json: []const u8 = undefined;
 
-    if (mem.eql(u8, uri, "/")) {
+    if (mem.eql(u8, uri, "/") and !is_post) {
         submission_mutex.lock();
         const count = submission_count;
         submission_mutex.unlock();
 
         json = try std.fmt.allocPrint(allocator,
-            \\{{"component":"Home","props":{{"message":"A blazingly fast Zig backend with Switchback form handling","stats":{{"submissions":{d},"framework":"Zig 0.13"}}}},"url":"/"}}
+            \\{{"component":"Home","props":{{"stats":{{"submissions":{d},"framework":"Zig 0.13"}},"recentSubmissions":[]}},"url":"/"}}
         , .{count});
-    } else if (mem.eql(u8, uri, "/submit") and !is_post) {
-        json = try std.fmt.allocPrint(allocator,
-            \\{{"component":"Submit","props":{{"recentSubmissions":[]}},"url":"/submit"}}
-        , .{});
-    } else if (mem.eql(u8, uri, "/submit") and is_post) {
+    } else if (mem.eql(u8, uri, "/") and is_post) {
         submission_mutex.lock();
         submission_count += 1;
+        const total = submission_count;
         submission_mutex.unlock();
 
         std.debug.print("📝 Form submitted: {s} ({s})\n", .{ form_name, form_email });
@@ -312,16 +309,12 @@ fn handleRequest(allocator: mem.Allocator, connection: std.net.Server.Connection
         defer allocator.free(escaped_email);
 
         json = try std.fmt.allocPrint(allocator,
-            \\{{"component":"Submit/Success","props":{{"message":"Your form was processed by Zig!","submitted":{{"name":"{s}","email":"{s}"}}}},"url":"/submit"}}
-        , .{ escaped_name, escaped_email });
-    } else if (mem.eql(u8, uri, "/about")) {
-        json = try std.fmt.allocPrint(allocator,
-            \\{{"component":"About","props":{{"version":"1.0.0","backend":"Zig 0.13","features":["Form handling with POST requests","Multi-threaded HTTP server","Zero-cost abstractions","Compile-time safety","No external dependencies"]}},"url":"/about"}}
-        , .{});
+            \\{{"component":"Success","props":{{"submitted":{{"name":"{s}","email":"{s}"}},"totalSubmissions":{d}}},"url":"/"}}
+        , .{ escaped_name, escaped_email, total });
     } else {
         json = try std.fmt.allocPrint(allocator,
-            \\{{"component":"Error","props":{{"message":"Page not found"}},"url":"{s}"}}
-        , .{uri});
+            \\{{"component":"Home","props":{{"stats":{{"submissions":0,"framework":"Zig 0.13"}},"recentSubmissions":[]}},"url":"/"}}
+        , .{});
     }
 
     defer allocator.free(json);

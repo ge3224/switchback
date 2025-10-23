@@ -45,46 +45,23 @@ style.textContent = `
     line-height: 1.6;
   }
 
-  nav {
+  header {
     background: #161b22;
     border-bottom: 2px solid #f97316;
-    padding: 1rem 2rem;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    padding: 2rem;
+    text-align: center;
     box-shadow: 0 4px 12px rgba(249, 115, 22, 0.1);
   }
 
-  nav .nav-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  header h1 {
+    font-size: 2.5rem;
+    margin: 0;
   }
 
-  nav a {
-    color: #58a6ff;
-    text-decoration: none;
-    margin-right: 1.5rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid transparent;
-    transition: all 0.2s;
-    font-weight: bold;
-  }
-
-  nav a:hover {
-    border-color: #f97316;
-    background: rgba(249, 115, 22, 0.1);
-  }
-
-  .nav-badge {
-    background: #f97316;
-    color: #0d1117;
-    padding: 0.4rem 0.8rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: bold;
+  header .subtitle {
+    color: #8b949e;
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
   }
 
   main {
@@ -93,36 +70,17 @@ style.textContent = `
     padding: 0 2rem;
   }
 
-  .demo-hint {
-    background: linear-gradient(135deg, #30363d 0%, #21262d 100%);
-    border: 2px solid #f97316;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    text-align: center;
-  }
-
-  .demo-hint strong {
-    color: #f97316;
-    font-size: 1.1rem;
-  }
-
-  .hint-flash {
-    display: inline-block;
-    color: #fbbf24;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
 
   h1 {
     font-size: 2.5rem;
-    margin-bottom: 1rem;
     color: #f97316;
     text-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+  }
+
+  h2 {
+    font-size: 1.8rem;
+    color: #f97316;
+    margin: 2rem 0 1rem 0;
   }
 
   .badge {
@@ -272,55 +230,28 @@ style.textContent = `
     margin-bottom: 0.5rem;
   }
 
-  ul {
-    margin-left: 2rem;
-    margin-top: 1rem;
-  }
-
-  li {
-    margin: 0.5rem 0;
-    color: #8b949e;
-  }
-
-  a.back-link {
-    color: #58a6ff;
-    text-decoration: none;
-    display: inline-block;
-    margin-top: 2rem;
-  }
-
-  a.back-link:hover {
-    text-decoration: underline;
+  .intro {
+    font-size: 1.1rem;
+    margin: 2rem 0;
+    line-height: 1.8;
   }
 `;
 document.head.appendChild(style);
 
-// Layout component - PERSISTENT across page changes
+// Simple layout wrapper
 function Layout(children) {
-  const nav = h('nav', {},
-    h('div', { class: 'nav-content' },
-      h('div', {},
-        h('a', { href: '/', 'data-swbk': '' }, '⚡ Home'),
-        h('a', { href: '/submit', 'data-swbk': '' }, '📝 Submit'),
-        h('a', { href: '/about', 'data-swbk': '' }, 'ℹ️  About'),
-      ),
-      h('div', { class: 'nav-badge' }, '🔒 PERSISTENT')
-    )
+  const header = h('header', {},
+    h('h1', {},
+      '⚡ Zig + Switchback',
+      h('span', { class: 'badge' }, 'Form Demo')
+    ),
+    h('div', { class: 'subtitle' }, 'Server-side form handling without page reloads')
   );
 
-  const demoHint = h('div', { class: 'demo-hint' },
-    h('strong', {}, '⚡ Zig + Switchback Demo:'),
-    ' This recipe demonstrates FORM HANDLING with POST requests. ',
-    h('span', { class: 'hint-flash' }, '✨ Try the Submit page!')
-  );
-
-  const main = h('main', {},
-    demoHint,
-    children
-  );
+  const main = h('main', {}, children);
 
   const container = h('div', {});
-  container.appendChild(nav);
+  container.appendChild(header);
   container.appendChild(main);
   return container;
 }
@@ -329,12 +260,10 @@ function Layout(children) {
 const pages = {
   'Home': (props) => Layout(
     h('div', {},
-      h('h1', {},
-        'Zig Recipe',
-        h('span', { class: 'badge' }, '⚡ Zig')
-      ),
-      h('div', { class: 'terminal-box' },
-        props.message
+      h('div', { class: 'intro' },
+        'This demo showcases ',
+        h('strong', { style: { color: '#f97316' } }, 'form handling with POST requests'),
+        ' using a Zig HTTP server. Submit the form below and watch Switchback handle it without a page reload!'
       ),
       h('div', { class: 'stats' },
         h('div', { class: 'stat-card' },
@@ -346,22 +275,8 @@ const pages = {
           h('div', {}, 'Backend')
         )
       ),
-      h('p', { style: { marginTop: '2rem', fontSize: '1.1rem' } },
-        'This recipe showcases Switchback\'s form handling capabilities with a Zig backend.'
-      ),
-      h('div', { style: { marginTop: '2rem' } },
-        h('a', { href: '/submit', 'data-swbk': '', class: 'btn' }, '📝 Try Form Submit')
-      )
-    )
-  ),
-
-  'Submit': (props) => Layout(
-    h('div', {},
-      h('h1', {}, '📝 Submit Form'),
-      h('div', { class: 'terminal-box' },
-        'Try submitting this form - Switchback handles it without page reload!'
-      ),
-      h('form', { method: 'POST', action: '/submit', 'data-swbk': '', enctype: 'application/x-www-form-urlencoded' },
+      h('h2', {}, '📝 Try It Out'),
+      h('form', { method: 'POST', action: '/', 'data-swbk': '', enctype: 'application/x-www-form-urlencoded' },
         h('label', { for: 'name' }, '> Name:'),
         h('input', {
           type: 'text',
@@ -380,94 +295,47 @@ const pages = {
           required: true
         }),
 
-        h('label', { for: 'message' }, '> Message:'),
-        h('textarea', {
-          id: 'message',
-          name: 'message',
-          rows: 4,
-          placeholder: 'Type your message here...',
-          required: true
-        }),
-
         h('button', { type: 'submit' }, '⚡ Submit via Switchback')
       ),
       props.recentSubmissions && props.recentSubmissions.length > 0 && (
-        h('div', { style: { marginTop: '2rem' } },
-          h('h2', { style: { color: '#f97316', marginBottom: '1rem' } }, 'Recent Submissions:'),
+        h('div', { style: { marginTop: '3rem' } },
+          h('h2', {}, 'Recent Submissions'),
           h('div', { class: 'user-list' },
             ...props.recentSubmissions.map(sub =>
               h('div', { class: 'user-card' },
                 h('h3', {}, sub.name),
-                h('p', {}, `📧 ${sub.email}`),
-                h('p', { style: { marginTop: '0.5rem', fontSize: '0.9rem', color: '#8b949e' } },
-                  sub.message
-                )
+                h('p', {}, `📧 ${sub.email}`)
               )
             )
           )
         )
-      ),
-      h('a', { href: '/', 'data-swbk': '', class: 'back-link' }, '← Back to Home')
-    )
-  ),
-
-  'Submit/Success': (props) => Layout(
-    h('div', {},
-      h('h1', {}, '✅ Success!'),
-      h('div', { class: 'success-message' },
-        h('strong', {}, '🎉 Form submitted successfully via Switchback POST!'),
-        h('p', { style: { marginTop: '1rem' } },
-          'Notice how the page updated instantly without a full reload? That\'s Switchback in action.'
-        )
-      ),
-      h('div', { class: 'terminal-box' },
-        `Submitted data: name="${props.submitted.name}", email="${props.submitted.email}"`
-      ),
-      h('p', { style: { margin: '1.5rem 0', fontSize: '1.1rem' } },
-        props.message
-      ),
-      h('div', { style: { display: 'flex', gap: '1rem' } },
-        h('a', { href: '/submit', 'data-swbk': '', class: 'btn' }, '📝 Submit Another'),
-        h('a', { href: '/', 'data-swbk': '', class: 'btn' }, '🏠 Home')
       )
     )
   ),
 
-  'About': (props) => Layout(
+  'Success': (props) => Layout(
     h('div', {},
-      h('h1', {}, 'ℹ️  About This Recipe'),
-      h('div', { class: 'terminal-box' },
-        `Zig Recipe v${props.version}`
-      ),
-      h('p', { style: { margin: '1.5rem 0', fontSize: '1.1rem' } },
-        h('strong', { style: { color: '#f97316' } }, '🔧 Backend: '),
-        props.backend
-      ),
-      h('h2', { style: { color: '#f97316', marginTop: '2rem', marginBottom: '1rem' } },
-        'Key Features:'
-      ),
-      h('ul', {},
-        ...props.features.map(feature => h('li', {}, `⚡ ${feature}`))
-      ),
-      h('h2', { style: { color: '#f97316', marginTop: '2rem', marginBottom: '1rem' } },
-        'What Makes This Special:'
+      h('div', { class: 'success-message' },
+        h('strong', {}, '🎉 Form submitted successfully!'),
+        h('p', { style: { marginTop: '1rem' } },
+          'Notice how the page updated instantly without a full reload? That\'s Switchback handling the POST request via AJAX.'
+        )
       ),
       h('div', { class: 'terminal-box' },
-        'This recipe demonstrates Switchback\'s FORM HANDLING with POST requests. ',
-        'Unlike the PHP recipe (which shows basic navigation), this showcases how Switchback ',
-        'intercepts form submissions and handles them via AJAX without page reloads.'
+        `Submitted: ${props.submitted.name} (${props.submitted.email})`
       ),
-      h('a', { href: '/', 'data-swbk': '', class: 'back-link' }, '← Back to Home')
-    )
-  ),
-
-  'Error': (props) => Layout(
-    h('div', {},
-      h('h1', {}, '❌ Error'),
-      h('div', { class: 'terminal-box' },
-        `Error: ${props.message}`
+      h('div', { class: 'stats' },
+        h('div', { class: 'stat-card' },
+          h('strong', {}, props.totalSubmissions),
+          h('div', {}, 'Total Submissions')
+        )
       ),
-      h('a', { href: '/', 'data-swbk': '', class: 'back-link' }, '← Back to Home')
+      h('div', { style: { marginTop: '2rem' } },
+        h('button', {
+          class: 'btn',
+          onClick: () => window.location.reload()
+        }, '📝 Submit Another')
+      )
     )
   ),
 };

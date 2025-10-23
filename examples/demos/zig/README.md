@@ -1,17 +1,21 @@
-# Zig Demo - Switchback Integration
+# Zig Demo - Form Handling with POST Requests
 
-A minimal example showing how to integrate Switchback with Zig's standard library HTTP server. Blazingly fast with zero runtime overhead!
+**Blazingly fast Zig backend + Switchback = Server-side form handling without page reloads**
 
-## What's Included
+This demo showcases Switchback's **form handling with POST requests** using a minimal multi-threaded Zig HTTP server. It's a single-page application that demonstrates the complete form submission lifecycle without any page reloads.
 
-- **server.zig** - Zig HTTP server with routing and `X-Switchback` header detection
-- **app.ts** - Client-side Switchback app (TypeScript)
-- **vite.config.ts** - Bundles app.ts + Switchback into single JS file
-- **Docker setup** - Multi-stage build with Zig compiler
+## What Makes This Demo Special
+
+A focused demonstration of form handling fundamentals:
+
+- ✅ **Form handling with POST requests** - Submit forms without page reloads
+- ✅ **Server-side state management** - Track submissions server-side (in-memory counter)
+- ✅ **Instant feedback** - Success page renders immediately after submission
+- ✅ **Zero framework dependencies** - Pure Zig stdlib + vanilla JS
 
 ## Try It Out
 
-Want to see Zig's performance without installing Zig locally?
+Run the full stack (Zig server + frontend build) in Docker:
 
 ```bash
 cd examples/demos/zig
@@ -20,156 +24,192 @@ docker-compose up
 
 Open http://localhost:8000
 
-## Running Natively
-
-To run this demo with a local Zig installation, see the [Zig download page](https://ziglang.org/download/).
+**That's it!** Docker Compose handles the Zig compilation, TypeScript bundling, and server startup automatically.
 
 ## How It Works
 
-1. **Initial Request**: Browser requests `/` → Zig returns full HTML with `window.initialPage`
-2. **Switchback Request**: User clicks link → Switchback adds `X-Switchback` header → Zig returns JSON
-3. **Client Rendering**: Switchback receives JSON, swaps page component, updates URL
+### The Core Pattern
+
+The server detects the `X-Switchback` header and responds differently:
 
 ```zig
-// Detect Switchback request
-const is_switchback = request.head.headers.contains("x-switchback");
+var is_switchback = false;
+while (lines.next()) |line| {
+    if (mem.startsWith(u8, line, "X-Switchback:")) {
+        is_switchback = true;
+    }
+}
 
-// Build JSON response
-try std.json.stringify(.{
-    .component = "Home",
-    .props = .{ .title = "Welcome" },
-    .url = "/",
-}, .{}, writer);
-
-// Return JSON or HTML
+// Dual response strategy
 if (is_switchback) {
-    try respondJson(allocator, &request.response, json);
+    try respondJson(connection.stream, json);  // JSON for form submission
 } else {
-    try respondHtml(allocator, &request.response, json);
+    try respondHtml(allocator, connection.stream, json);  // HTML for first load
 }
 ```
 
-## Key Features Demonstrated
+### The Request Flow
 
-- ✅ Multi-threaded HTTP server with `std.net.Server`
-- ✅ Static file serving for `/dist/app.js`
-- ✅ Manual routing with string matching
-- ✅ JSON serialization with `std.json.stringify`
-- ✅ X-Switchback header detection
-- ✅ Zero external dependencies (Zig stdlib only)
-- ✅ Compile-time safety guarantees
+**1. Initial Load** (`GET /` without header)
+```
+Browser → Zig Server
+         ← Full HTML with <script>window.initialPage = {...}</script>
+Client-side app hydrates with form and stats (no loading state!)
+```
 
-## File Structure
+**2. Form Submission** (`POST /` with `X-Switchback: true`)
+```
+User submits <form data-swbk>
+Client → Zig Server (with X-Switchback header + FormData)
+Zig processes form, increments counter
+        ← JSON: {"component":"Success","props":{...}}
+Client renders success page (no reload!)
+```
+
+### The Architecture
+
+**Backend (server.zig):**
+- Single route: `GET /` and `POST /`
+- State management: `submission_count` in memory
+- Form parsing: Extracts name and email from multipart FormData
+- Returns component name + props as JSON
+
+**Frontend (app.ts):**
+- Two components: `Home` (with form) and `Success`
+- Intercepts form with `data-swbk` attribute
+- Adds `X-Switchback` header to POST requests
+- Renders success component after submission
+
+## Key Files
 
 ```
 zig/
-├── server.zig         # Backend HTTP server
-├── app.ts             # Frontend Switchback app
-├── vite.config.ts     # Vite bundler config
-├── package.json       # Build scripts
-├── Dockerfile         # Docker image
-├── docker-compose.yml # Docker setup
-└── README.md          # This file
+├── server.zig         # Multi-threaded HTTP server
+│                      # Route: / (GET/POST)
+│                      # Dual response: HTML or JSON based on header
+│
+├── app.ts             # Switchback client app
+│                      # Components: Home (with form), Success
+│                      # Handles form interception
+│
+├── Dockerfile         # Multi-stage: Deno + Zig build
+├── docker-compose.yml # One command to run everything
+└── README.md          # You are here
 ```
 
-## Extending This Example
+## Extending This Demo
 
-### Add a New Route
+### Add More Form Fields
 
-In `server.zig`:
+Update the form in `app.ts`:
+```typescript
+h('label', { for: 'message' }, '> Message:'),
+h('textarea', {
+  id: 'message',
+  name: 'message',
+  placeholder: 'Your message...',
+  required: true
+})
+```
 
+Parse it in `server.zig`:
 ```zig
-} else if (mem.eql(u8, uri, "/posts")) {
-    try std.json.stringify(.{
-        .component = "Posts/Index",
-        .props = .{ .posts = posts },
-        .url = "/posts",
-    }, .{}, writer);
+var form_message: []const u8 = "";
+// ... in the parsing loop:
+else if (mem.eql(u8, current_field, "message")) {
+    form_message = try allocator.dupe(u8, line);
 }
 ```
 
-In `app.ts`:
+### Store Submissions
 
-```typescript
-const pages = {
-  // ... existing pages
-  'Posts/Index': (props) => Layout(
-    h('div', {},
-      h('h1', {}, 'Posts'),
-      // ... your component
-    )
-  ),
+Instead of just counting, store the actual submissions:
+```zig
+const Submission = struct {
+    name: []const u8,
+    email: []const u8,
 };
+
+var submissions = std.ArrayList(Submission).init(allocator);
+
+// After form submission:
+try submissions.append(.{
+    .name = try allocator.dupe(u8, form_name),
+    .email = try allocator.dupe(u8, form_email),
+});
 ```
+
+Then return them in the Home component props to display recent submissions.
 
 ### Connect to a Database
 
-You can use Zig libraries like [pg.zig](https://github.com/karlseguin/pg.zig) for PostgreSQL:
+Use Zig database libraries like [pg.zig](https://github.com/karlseguin/pg.zig):
 
 ```zig
 const pg = @import("pg");
 
 var pool = try pg.Pool.init(allocator, .{
-    .host = "localhost",
-    .port = 5432,
-    .database = "mydb",
+    .connect = .{ .host = "localhost", .port = 5432 },
+    .auth = .{ .username = "user", .database = "db", .password = "pass" },
 });
 defer pool.deinit();
 
-const result = try pool.query("SELECT * FROM users", .{});
+// In your route handler
+const result = try pool.query("SELECT name, email FROM users", .{});
+defer result.deinit();
+
+// Build JSON with real data
+json = try std.fmt.allocPrint(allocator,
+    \\{{"component":"Users","props":{{"users":[...]}},"url":"/users"}}
+, .{});
 ```
 
-### Use a Router Library
+## Running Natively (Without Docker)
 
-For more complex routing, consider:
-- [httpz](https://github.com/karlseguin/http.zig) - High-performance HTTP server with routing
-- [zap](https://github.com/zigzap/zap) - Fast HTTP server built on facil.io
+**Prerequisites:**
+- [Zig 0.13](https://ziglang.org/download/) for the server
+- [Deno](https://deno.land/) for frontend build (or use Docker)
 
-## Troubleshooting
+**Steps:**
+```bash
+cd examples/demos/zig
 
-**App not loading?**
-- Make sure you've run `pnpm build` in the demo directory
-- Check that `dist/app.js` exists
-- Check browser console for import errors
+# 1. Build frontend with Deno
+mkdir -p dist
+deno run -A npm:esbuild app.ts --bundle --outfile=dist/app.js --format=esm --platform=browser
 
-**Compilation errors?**
-- This demo requires Zig 0.13.0 exactly
-- Run `zig version` to verify
-- Download from https://ziglang.org/download/
+# 2. Compile Zig server
+zig build-exe server.zig
 
-**Routes not working?**
-- Make sure you're using `data-swbk` attribute on links for SPA navigation
-- Check server output for request logs
+# 3. Run server
+./server
+```
 
-**Docker issues?**
-- Make sure port 8000 is not in use: `lsof -i :8000`
-- Rebuild with `docker-compose build --no-cache`
-- Zig download may be slow - be patient during first build
-
-**Build issues?**
-- Make sure parent dependencies are installed: `pnpm install --dir ../../../`
-- TypeScript errors? Check that tsconfig.json exists in project root
+Open http://localhost:8000
 
 ## Performance Notes
 
-Zig's HTTP server is extremely fast:
-- Zero-cost abstractions
+Zig's HTTP server is **extremely fast**:
+- Zero-cost abstractions (no runtime overhead)
 - Compile-time optimizations
-- No garbage collection overhead
-- Minimal memory footprint (~10MB runtime)
+- No garbage collection pauses
+- Minimal memory footprint (~10MB)
+- Multi-threaded connection handling
 
-For production use, consider:
-- Enabling `-O ReleaseFast` or `-O ReleaseSafe` optimizations
-- Using connection pooling for database queries
-- Adding rate limiting and request validation
-- Implementing graceful shutdown handling
+For production:
+```bash
+# Build with optimizations
+zig build-exe server.zig -O ReleaseFast
+```
 
-## Why Zig?
+## What This Shows About Switchback
 
-This demo demonstrates Switchback with a systems programming language:
-- **Performance**: Comparable to C/C++ but with memory safety
-- **Simplicity**: No complex build systems or package managers
-- **Portability**: Cross-compile to any platform
-- **Learning**: Great introduction to low-level HTTP servers
+This demo is intentionally minimal to show what Switchback actually requires:
 
-Perfect for high-performance APIs, microservices, or learning systems programming!
+- 🎯 **Simple backend** - Return JSON and detect one header
+- ⚡ **No page reloads** - Forms submit and render new content instantly
+- 🔧 **Server decides** - You control which component renders with what props
+- 📦 **No framework needed** - Just vanilla JS and your backend language
+- 🚀 **Works without JS** - Forms still POST normally if JavaScript is disabled
+
+Zig, C, PHP, Rust—doesn't matter. If you can return JSON, you can use Switchback. This demo shows the pattern at its simplest: detect a header, return the right response format, done.

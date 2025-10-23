@@ -1,29 +1,23 @@
-FROM node:20-alpine AS js-builder
+# Stage 1: Deno builder for the frontend
+# Uses Deno + esbuild for fast, dependency-free bundling
+FROM docker.io/denoland/deno:2.1.4 AS deno-builder
 
 WORKDIR /build
-
-# Copy root package files for dependencies
-COPY package.json pnpm-lock.yaml ./
-
-# Install pnpm and root dependencies
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 # Copy Switchback source
 COPY src ./src
 COPY tsconfig.json ./
 
-# Copy recipe files maintaining structure: examples/demos/zig/
+# Copy demo app file
 COPY examples/demos/zig/app.ts ./examples/demos/zig/app.ts
-COPY examples/demos/zig/vite.config.ts ./examples/demos/zig/vite.config.ts
-COPY examples/demos/zig/package.json ./examples/demos/zig/package.json
-COPY examples/demos/zig/.npmrc ./examples/demos/zig/.npmrc
 
-# Build bundled app (includes Switchback)
+# Build with Deno (uses esbuild from npm via Deno's npm compatibility)
+# This is MUCH faster than npm install + vite build - no node_modules needed!
 WORKDIR /build/examples/demos/zig
-RUN pnpm install --reporter=silent 2>&1 | grep -v "Ignored build scripts" || true
-RUN pnpm build
+RUN mkdir -p dist
+RUN deno run -A npm:esbuild app.ts --bundle --outfile=dist/app.js --format=esm --platform=browser
 
-# Zig builder stage
+# Stage 2: Zig builder for the server
 FROM alpine:3.19 AS zig-builder
 
 # Install Zig
@@ -42,13 +36,13 @@ COPY examples/demos/zig/server.zig .
 # Build Zig server
 RUN zig build-exe server.zig -O ReleaseFast
 
-# Runtime stage
+# Stage 3: Runtime
 FROM alpine:3.19
 
 WORKDIR /app
 
 # Copy built JS bundle
-COPY --from=js-builder /build/examples/demos/zig/dist/app.js ./dist/app.js
+COPY --from=deno-builder /build/examples/demos/zig/dist/app.js ./dist/app.js
 
 # Copy Zig binary
 COPY --from=zig-builder /build/server ./server
