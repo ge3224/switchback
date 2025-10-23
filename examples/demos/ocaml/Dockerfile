@@ -1,34 +1,23 @@
 # Multi-stage Dockerfile for OCaml + Switchback
 
-# Stage 1: Build JavaScript bundle
-FROM node:20-alpine AS js-builder
+# Stage 1: Deno builder for the frontend
+# Uses Deno + esbuild for fast, dependency-free bundling
+FROM docker.io/denoland/deno:2.1.4 AS deno-builder
 
-WORKDIR /app
-
-# Copy parent package.json for shared dependencies
-COPY package.json /workspace/package.json
-COPY pnpm-lock.yaml /workspace/pnpm-lock.yaml
-
-# Install pnpm
-RUN npm install -g pnpm
-
-# Install dependencies from workspace root
-WORKDIR /workspace
-RUN pnpm install
-
-# Copy demo files
-WORKDIR /app
-COPY examples/demos/ocaml/package.json examples/demos/ocaml/vite.config.ts examples/demos/ocaml/.npmrc ./
-COPY examples/demos/ocaml/app.ts ./
+WORKDIR /build
 
 # Copy Switchback source
-COPY src /workspace/src
+COPY src ./src
+COPY tsconfig.json ./
 
-# Install demo dependencies
-RUN pnpm install
+# Copy demo app file
+COPY examples/demos/ocaml/app.ts ./examples/demos/ocaml/app.ts
 
-# Build the client bundle
-RUN pnpm build
+# Build with Deno (uses esbuild from npm via Deno's npm compatibility)
+# This is MUCH faster than npm install + vite build - no node_modules needed!
+WORKDIR /build/examples/demos/ocaml
+RUN mkdir -p dist
+RUN deno run -A npm:esbuild app.ts --bundle --outfile=dist/app.js --format=esm --platform=browser
 
 # Stage 2: Build OCaml application
 FROM docker.io/ocaml/opam:alpine-ocaml-5.2 AS ocaml-builder
@@ -59,7 +48,7 @@ RUN apk add --no-cache gmp
 COPY --from=ocaml-builder /home/opam/_build/default/server.exe /app/server
 
 # Copy built JavaScript bundle
-COPY --from=js-builder /app/dist /app/dist
+COPY --from=deno-builder /build/examples/demos/ocaml/dist /app/dist
 
 EXPOSE 8000
 

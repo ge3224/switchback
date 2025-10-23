@@ -1,14 +1,22 @@
 /**
  * OCaml + Switchback Demo
- * Showcases Switchback's instant navigation with OCaml's type-safe state machine
+ * Showcases Switchback's full feature set with OCaml's type-safe state machine
  *
  * Switchback Features Demonstrated:
- * - app.visit() for instant SPA navigation
- * - Optimistic updates for state transitions
- * - Progress indicators during async operations
- * - Form handling with POST requests
- * - Conditional rendering based on state
- * - Error recovery when transitions fail
+ * 1. app.visit() - Instant SPA navigation (no page reload!)
+ * 2. method: 'post' - Form submissions via POST with Switchback
+ * 3. data: {...} - Sending form data to server
+ * 4. preserveScroll: true - Maintain scroll position during navigation
+ * 5. onStart - Lifecycle hook for loading states
+ * 6. onSuccess - Success callback with page data
+ * 7. onError - Error handling with server validation messages
+ * 8. onFinish - Cleanup after request completes
+ * 9. Optimistic updates - Instant UI feedback before server confirms
+ * 10. Progress indicators - Automatic loading bar during navigation
+ * 11. app.reload() - Refresh current component without navigation
+ *
+ * This demonstrates how Switchback's minimal API enables complex UX patterns
+ * while keeping the backend (OCaml) as the source of truth for business logic.
  */
 
 import { newSwitchback } from '../../../src/index.ts';
@@ -69,16 +77,6 @@ interface Task {
   created_at: number;
 }
 
-interface HomeProps {
-  stats: {
-    draft: number;
-    inReview: number;
-    approved: number;
-    published: number;
-    total: number;
-  };
-}
-
 interface TaskListProps {
   tasks: Task[];
 }
@@ -86,16 +84,6 @@ interface TaskListProps {
 interface TaskDetailProps {
   task: Task;
   availableActions: string[];
-}
-
-interface AboutProps {
-  version: string;
-  backend: string;
-  features: string[];
-}
-
-interface ErrorProps {
-  message: string;
 }
 
 // ============================================================================
@@ -107,6 +95,8 @@ const state = {
   currentTask: null as Task | null,
   optimisticTransition: null as { taskId: number; newState: TaskState } | null,
   isTransitioning: false,
+  showTransitionForm: null as { taskId: number; action: string } | null,
+  toastMessage: null as { message: string; type: 'success' | 'error' } | null,
 };
 
 // ============================================================================
@@ -148,50 +138,23 @@ async function transitionTask(
 // UI COMPONENTS
 // ============================================================================
 
-// Layout wrapper with navigation
+// Layout wrapper with simple header
 const Layout = (children: any[]) => {
   return h('div', { style: 'min-height: 100vh; background: #1a1a2e; color: #eee;' }, [
+    // Toast notification (global)
+    Toast(),
+
+    // Transition form modal (global)
+    state.showTransitionForm && TransitionForm(state.showTransitionForm.taskId, state.showTransitionForm.action),
+
     // Header
     h('header', {
       style: 'background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); padding: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'
     }, [
       h('div', { style: 'max-width: 1200px; margin: 0 auto;' }, [
-        h('h1', { style: 'margin: 0 0 1rem 0; font-size: 2rem; color: white;' }, '🐫 OCaml Workflow'),
-        h('nav', { style: 'display: flex; gap: 1rem; flex-wrap: wrap;' }, [
-          h('a', {
-            href: '/',
-            'data-swbk': '',
-            style: 'color: white; text-decoration: none; padding: 0.5rem 1rem; background: rgba(255,255,255,0.2); border-radius: 4px; transition: all 0.2s;',
-            onMouseOver: (e: MouseEvent) => {
-              (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.3)';
-            },
-            onMouseOut: (e: MouseEvent) => {
-              (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.2)';
-            },
-          }, 'Home'),
-          h('a', {
-            href: '/tasks',
-            'data-swbk': '',
-            style: 'color: white; text-decoration: none; padding: 0.5rem 1rem; background: rgba(255,255,255,0.2); border-radius: 4px; transition: all 0.2s;',
-            onMouseOver: (e: MouseEvent) => {
-              (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.3)';
-            },
-            onMouseOut: (e: MouseEvent) => {
-              (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.2)';
-            },
-          }, 'Tasks'),
-          h('a', {
-            href: '/about',
-            'data-swbk': '',
-            style: 'color: white; text-decoration: none; padding: 0.5rem 1rem; background: rgba(255,255,255,0.2); border-radius: 4px; transition: all 0.2s;',
-            onMouseOver: (e: MouseEvent) => {
-              (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.3)';
-            },
-            onMouseOut: (e: MouseEvent) => {
-              (e.target as HTMLElement).style.background = 'rgba(255,255,255,0.2)';
-            },
-          }, 'About'),
-        ]),
+        h('h1', { style: 'margin: 0; font-size: 2rem; color: white;' }, '🐫 OCaml Type-Safe Workflow'),
+        h('p', { style: 'margin: 0.5rem 0 0 0; color: rgba(255,255,255,0.9); font-size: 0.9rem;' },
+          'Pattern matching + Algebraic data types + Switchback instant navigation'),
       ]),
     ]),
 
@@ -236,82 +199,242 @@ const StateBadge = (state: TaskState) => {
   }, state.label);
 };
 
-// ============================================================================
-// PAGES - Switchback Components
-// ============================================================================
+// Toast notification
+const Toast = () => {
+  if (!state.toastMessage) return null;
 
-const HomePage = (props: HomeProps) => {
-  const { stats } = props;
+  const { message, type } = state.toastMessage;
+  const bgColor = type === 'success' ? '#4caf50' : '#f44336';
 
-  return Layout([
-    h('div', {}, [
-      h('h2', { style: 'color: #ff6b35; margin-bottom: 1.5rem;' }, '📊 Workflow Dashboard'),
+  // Auto-dismiss after 3 seconds
+  setTimeout(() => {
+    state.toastMessage = null;
+    app.reload();
+  }, 3000);
 
-      h('div', {
-        style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;'
+  return h('div', {
+    style: `position: fixed; top: 1rem; right: 1rem; background: ${bgColor}; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; animation: slideIn 0.3s ease-out;`
+  }, [
+    h('style', {}, `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+    `),
+    message
+  ]);
+};
+
+// Helper function to show toast
+function showToast(message: string, type: 'success' | 'error' = 'success') {
+  state.toastMessage = { message, type };
+  app.reload();
+}
+
+// Transition form component
+const TransitionForm = (taskId: number, action: string) => {
+  const actionLabels: Record<string, string> = {
+    review: 'Submit for Review',
+    approve: 'Approve Task',
+    reject: 'Reject Task',
+    publish: 'Publish Task',
+    draft: 'Resubmit as Draft',
+  };
+
+  return h('div', {
+    style: 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;',
+    onClick: (e: MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        state.showTransitionForm = null;
+        app.reload();
+      }
+    }
+  }, [
+    h('div', {
+      style: 'background: #16213e; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5);'
+    }, [
+      h('h3', { style: 'margin: 0 0 1.5rem 0; color: #ff6b35;' }, actionLabels[action] || action),
+
+      h('form', {
+        onSubmit: (e: Event) => {
+          e.preventDefault();
+          const form = e.target as HTMLFormElement;
+          const formData = new FormData(form);
+          const data = Object.fromEntries(formData.entries());
+
+          // Optimistic update
+          const optimisticState: TaskState = {
+            status: action === 'review' ? 'in_review' : action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : action === 'publish' ? 'published' : 'draft',
+            label: action === 'review' ? 'In Review' : action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : action === 'publish' ? 'Published' : 'Draft',
+            reviewer: data.reviewer as string,
+            ...(data.reason && { reason: data.reason as string }),
+            ...(data.url && { url: data.url as string }),
+          };
+
+          state.optimisticTransition = { taskId, newState: optimisticState };
+          state.showTransitionForm = null;
+          state.isTransitioning = true;
+          app.reload();
+
+          // Use Switchback's POST capability!
+          app.visit(`/task/${taskId}`, {
+            method: 'post',
+            data: { action, ...data },
+            preserveScroll: true,
+            onStart: () => {
+              console.log('🚀 Starting transition...');
+            },
+            onSuccess: (page) => {
+              state.optimisticTransition = null;
+              state.isTransitioning = false;
+              showToast(`Task ${action} successful!`, 'success');
+            },
+            onError: (error) => {
+              state.optimisticTransition = null;
+              state.isTransitioning = false;
+              showToast(error.error || 'Transition failed', 'error');
+              app.reload();
+            },
+            onFinish: () => {
+              console.log('✅ Transition complete');
+            }
+          });
+        }
       }, [
-        h('div', {
-          style: 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'
-        }, [
-          h('div', { style: 'font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;' }, stats.draft.toString()),
-          h('div', { style: 'color: rgba(255,255,255,0.9);' }, 'Draft'),
+        // Reviewer field (all actions need this)
+        h('div', { style: 'margin-bottom: 1rem;' }, [
+          h('label', { style: 'display: block; margin-bottom: 0.5rem; color: #eee;' }, 'Reviewer Name *'),
+          h('input', {
+            type: 'text',
+            name: 'reviewer',
+            required: true,
+            placeholder: 'Enter reviewer name',
+            style: 'width: 100%; padding: 0.75rem; border: 1px solid #333; border-radius: 4px; background: #1a1a2e; color: #eee; font-size: 1rem;'
+          }),
         ]),
-        h('div', {
-          style: 'background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'
-        }, [
-          h('div', { style: 'font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;' }, stats.inReview.toString()),
-          h('div', { style: 'color: rgba(255,255,255,0.9);' }, 'In Review'),
-        ]),
-        h('div', {
-          style: 'background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'
-        }, [
-          h('div', { style: 'font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;' }, stats.approved.toString()),
-          h('div', { style: 'color: rgba(255,255,255,0.9);' }, 'Approved'),
-        ]),
-        h('div', {
-          style: 'background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);'
-        }, [
-          h('div', { style: 'font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem;' }, stats.published.toString()),
-          h('div', { style: 'color: rgba(255,255,255,0.9);' }, 'Published'),
-        ]),
-      ]),
 
-      h('div', {
-        style: 'background: #16213e; padding: 2rem; border-radius: 8px; border-left: 4px solid #ff6b35;'
-      }, [
-        h('h3', { style: 'color: #ff6b35; margin-bottom: 1rem;' }, '💡 About This Demo'),
-        h('p', { style: 'line-height: 1.6; margin-bottom: 1rem;' }, 'This demo showcases OCaml\'s type-safe state machine with Switchback\'s instant navigation:'),
-        h('ul', { style: 'list-style: none; padding-left: 0;' }, [
-          h('li', { style: 'margin-bottom: 0.5rem; padding-left: 1.5rem; position: relative;' }, [
-            h('span', { style: 'position: absolute; left: 0;' }, '✓'),
-            ' Pattern matching prevents invalid state transitions'
-          ]),
-          h('li', { style: 'margin-bottom: 0.5rem; padding-left: 1.5rem; position: relative;' }, [
-            h('span', { style: 'position: absolute; left: 0;' }, '✓'),
-            ' Algebraic data types model complex workflows'
-          ]),
-          h('li', { style: 'margin-bottom: 0.5rem; padding-left: 1.5rem; position: relative;' }, [
-            h('span', { style: 'position: absolute; left: 0;' }, '✓'),
-            ' Switchback provides instant navigation with app.visit()'
-          ]),
-          h('li', { style: 'margin-bottom: 0.5rem; padding-left: 1.5rem; position: relative;' }, [
-            h('span', { style: 'position: absolute; left: 0;' }, '✓'),
-            ' Optimistic updates for smooth UX'
-          ]),
+        // Reason field (only for reject)
+        action === 'reject' && h('div', { style: 'margin-bottom: 1rem;' }, [
+          h('label', { style: 'display: block; margin-bottom: 0.5rem; color: #eee;' }, 'Rejection Reason *'),
+          h('textarea', {
+            name: 'reason',
+            required: true,
+            placeholder: 'Explain why this task is being rejected',
+            rows: 3,
+            style: 'width: 100%; padding: 0.75rem; border: 1px solid #333; border-radius: 4px; background: #1a1a2e; color: #eee; font-size: 1rem; resize: vertical;'
+          }),
         ]),
-        h('button', {
-          style: 'background: #ff6b35; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; font-size: 1rem; cursor: pointer; margin-top: 1rem;',
-          onClick: (e: Event) => {
-            e.preventDefault();
-            app.visit('/tasks');  // Switchback instant navigation!
-          },
-        }, 'View Tasks →'),
+
+        // URL field (only for publish) - auto-generated with option to edit
+        action === 'publish' && (() => {
+          const currentTask = state.tasks.find(t => t.id === taskId);
+          const slug = currentTask?.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'task';
+          const autoUrl = `/published/${slug}`;
+
+          return h('div', { style: 'margin-bottom: 1rem;' }, [
+            h('label', { style: 'display: block; margin-bottom: 0.5rem; color: #eee;' }, 'Publish URL (auto-generated)'),
+            h('input', {
+              type: 'text',
+              name: 'url',
+              value: autoUrl,
+              placeholder: '/published/...',
+              style: 'width: 100%; padding: 0.75rem; border: 1px solid #333; border-radius: 4px; background: #1a1a2e; color: #eee; font-size: 1rem;'
+            }),
+            h('p', { style: 'margin: 0.5rem 0 0 0; color: #999; font-size: 0.85rem;' }, 'Auto-generated from task title. You can edit if needed.'),
+          ]);
+        })(),
+
+        // Action buttons
+        h('div', { style: 'display: flex; gap: 0.75rem; margin-top: 1.5rem;' }, [
+          h('button', {
+            type: 'submit',
+            style: `flex: 1; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; background: ${
+              action === 'approve' ? '#4caf50' :
+              action === 'publish' ? '#9c27b0' :
+              action === 'reject' ? '#f44336' :
+              '#2196f3'
+            }; color: white; font-weight: bold;`
+          }, 'Confirm'),
+          h('button', {
+            type: 'button',
+            onClick: () => {
+              state.showTransitionForm = null;
+              app.reload();
+            },
+            style: 'flex: 1; padding: 0.75rem 1.5rem; border: 1px solid #333; border-radius: 4px; font-size: 1rem; cursor: pointer; background: transparent; color: #eee;'
+          }, 'Cancel'),
+        ]),
       ]),
     ]),
   ]);
 };
 
-const TaskListPage = (props: TaskListProps) => {
+// ============================================================================
+// PAGES - Switchback Components
+// ============================================================================
+
+const PublishedTaskPage = (props: { task: Task }) => {
+  const { task } = props;
+
+  return Layout([
+    h('div', {}, [
+      h('button', {
+        style: 'background: #333; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-bottom: 1.5rem;',
+        onClick: () => app.visit('/', { preserveScroll: true }),
+      }, '← Back to Tasks'),
+
+      h('div', {
+        style: 'background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%); padding: 3rem 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 8px 24px rgba(156,39,176,0.3);'
+      }, [
+        h('div', { style: 'max-width: 800px; margin: 0 auto;' }, [
+          h('div', { style: 'display: inline-block; background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 20px; margin-bottom: 1rem;' }, [
+            h('span', { style: 'color: white; font-size: 0.9rem; font-weight: bold;' }, '📄 PUBLISHED')
+          ]),
+          h('h1', { style: 'margin: 0 0 1rem 0; color: white; font-size: 2.5rem;' }, task.title),
+          h('p', { style: 'color: rgba(255,255,255,0.9); font-size: 1.1rem; line-height: 1.6; margin: 0;' }, task.description),
+        ]),
+      ]),
+
+      h('div', {
+        style: 'background: #16213e; padding: 2rem; border-radius: 8px; margin-bottom: 2rem;'
+      }, [
+        h('h3', { style: 'color: #ff6b35; margin: 0 0 1rem 0;' }, 'Publication Details'),
+
+        task.state.status === 'published' && h('div', { style: 'display: grid; gap: 1rem;' }, [
+          h('div', {}, [
+            h('strong', { style: 'color: #999; display: block; margin-bottom: 0.25rem;' }, 'Published By'),
+            h('span', { style: 'color: #eee;' }, task.state.reviewer || 'Unknown'),
+          ]),
+          h('div', {}, [
+            h('strong', { style: 'color: #999; display: block; margin-bottom: 0.25rem;' }, 'Published At'),
+            h('span', { style: 'color: #eee;' },
+              task.state.published_at
+                ? new Date(task.state.published_at * 1000).toLocaleString()
+                : 'Unknown'),
+          ]),
+          h('div', {}, [
+            h('strong', { style: 'color: #999; display: block; margin-bottom: 0.25rem;' }, 'Priority'),
+            PriorityBadge(task.priority),
+          ]),
+        ]),
+      ]),
+
+      h('div', {
+        style: 'background: rgba(255,107,53,0.1); padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ff6b35;'
+      }, [
+        h('p', { style: 'margin: 0; color: #eee;' }, [
+          '✨ This is a published task! You can share this URL with others. Click "View Details" to see the full task information.'
+        ]),
+        h('button', {
+          style: 'margin-top: 1rem; background: #ff6b35; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem;',
+          onClick: () => app.visit(`/task/${task.id}`),
+        }, 'View Task Details →'),
+      ]),
+    ]),
+  ]);
+};
+
+const MainPage = (props: TaskListProps) => {
   if (state.tasks.length === 0) {
     // Fetch tasks on first load
     fetchTasks().then(tasks => {
@@ -323,7 +446,16 @@ const TaskListPage = (props: TaskListProps) => {
 
   return Layout([
     h('div', {}, [
-      h('h2', { style: 'color: #ff6b35; margin-bottom: 1.5rem;' }, '📋 Task List'),
+      h('h2', { style: 'color: #ff6b35; margin-bottom: 1rem;' }, '📋 Workflow Tasks'),
+
+      h('div', {
+        style: 'background: #16213e; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ff6b35; margin-bottom: 2rem;'
+      }, [
+        h('p', { style: 'margin: 0 0 0.5rem 0; line-height: 1.6;' },
+          'This demo showcases OCaml\'s type-safe state machine: pattern matching prevents invalid transitions, algebraic data types model workflows, and Switchback provides instant navigation.'),
+        h('p', { style: 'margin: 0; color: #999; font-size: 0.9rem;' },
+          'Click any task to view details and trigger state transitions.'),
+      ]),
 
       h('div', {
         style: 'display: grid; gap: 1rem;'
@@ -360,6 +492,22 @@ const TaskListPage = (props: TaskListProps) => {
           ]),
           h('p', { style: 'color: #bbb; margin: 0;' }, task.description),
           displayState.reviewer && h('p', { style: 'color: #999; margin-top: 0.5rem; font-size: 0.9rem;' }, `Reviewer: ${displayState.reviewer}`),
+          displayState.url && h('p', { style: 'color: #9c27b0; margin-top: 0.5rem; font-size: 0.9rem;' }, [
+            '📄 Published at: ',
+            h('a', {
+              href: displayState.url,
+              onClick: (e: MouseEvent) => {
+                e.preventDefault();
+                e.stopPropagation(); // Don't trigger task detail navigation
+                if (displayState.url?.startsWith('/')) {
+                  app.visit(displayState.url);
+                } else {
+                  window.open(displayState.url, '_blank');
+                }
+              },
+              style: 'color: #9c27b0; text-decoration: underline; cursor: pointer;'
+            }, displayState.url),
+          ]),
         ]);
       })),
     ]),
@@ -371,41 +519,9 @@ const TaskDetailPage = (props: TaskDetailProps) => {
   state.currentTask = task;
 
   const handleTransition = (action: string) => {
-    const reviewer = prompt(`Enter reviewer name for ${action}:`) || 'System';
-    let reason: string | undefined;
-    let url: string | undefined;
-
-    if (action === 'reject') {
-      reason = prompt('Enter rejection reason:') || 'No reason provided';
-    } else if (action === 'publish') {
-      url = prompt('Enter publish URL:') || '/published';
-    }
-
-    // OPTIMISTIC UPDATE - Update UI immediately!
-    const optimisticState: TaskState = {
-      status: action === 'review' ? 'in_review' : action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : action === 'publish' ? 'published' : 'draft',
-      label: action === 'review' ? 'In Review' : action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : action === 'publish' ? 'Published' : 'Draft',
-      reviewer,
-      ...(reason && { reason }),
-      ...(url && { url }),
-    };
-
-    state.optimisticTransition = { taskId: task.id, newState: optimisticState };
+    // Show inline form instead of prompt!
+    state.showTransitionForm = { taskId: task.id, action };
     app.reload();
-
-    // Send to server
-    transitionTask(task.id, action, reviewer, reason, url).then(result => {
-      state.optimisticTransition = null;
-
-      if (result.success && result.task) {
-        // Update succeeded - navigate to updated task
-        app.visit(`/task/${task.id}`);
-      } else {
-        // Update failed - show error and revert
-        alert(`Transition failed: ${result.error}`);
-        app.reload();
-      }
-    });
   };
 
   // Apply optimistic state if exists
@@ -417,7 +533,7 @@ const TaskDetailPage = (props: TaskDetailProps) => {
     h('div', {}, [
       h('button', {
         style: 'background: #333; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-bottom: 1.5rem;',
-        onClick: () => app.visit('/tasks'),  // Switchback navigation!
+        onClick: () => app.visit('/', { preserveScroll: true }),  // Switchback navigation with scroll preservation!
       }, '← Back to Tasks'),
 
       h('div', {
@@ -458,8 +574,19 @@ const TaskDetailPage = (props: TaskDetailProps) => {
           h('strong', { style: 'color: #9c27b0;' }, 'Published URL: '),
           h('a', {
             href: displayState.url,
-            style: 'color: #9c27b0; text-decoration: underline;'
+            onClick: (e: MouseEvent) => {
+              e.preventDefault();
+              // Use Switchback navigation for internal URLs
+              if (displayState.url?.startsWith('/')) {
+                app.visit(displayState.url);
+              } else {
+                // External URL - open in new tab
+                window.open(displayState.url, '_blank');
+              }
+            },
+            style: 'color: #9c27b0; text-decoration: underline; cursor: pointer;'
           }, displayState.url),
+          h('span', { style: 'margin-left: 0.5rem; color: #999; font-size: 0.85rem;' }, '(click to navigate)'),
         ]),
 
         // Available actions
@@ -483,68 +610,16 @@ const TaskDetailPage = (props: TaskDetailProps) => {
   ]);
 };
 
-const AboutPage = (props: AboutProps) => {
-  return Layout([
-    h('div', {}, [
-      h('h2', { style: 'color: #ff6b35; margin-bottom: 1.5rem;' }, 'ℹ️ About This Demo'),
 
-      h('div', {
-        style: 'background: #16213e; padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem;'
-      }, [
-        h('h3', { style: 'color: #ff6b35; margin-bottom: 1rem;' }, 'Backend'),
-        h('p', {}, `${props.backend} - Pure standard library, no frameworks!`),
-      ]),
-
-      h('div', {
-        style: 'background: #16213e; padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem;'
-      }, [
-        h('h3', { style: 'color: #ff6b35; margin-bottom: 1rem;' }, 'Features'),
-        h('ul', { style: 'list-style-position: inside;' }, props.features.map(feature =>
-          h('li', { key: feature, style: 'margin-bottom: 0.5rem;' }, feature)
-        )),
-      ]),
-
-      h('div', {
-        style: 'background: #16213e; padding: 2rem; border-radius: 8px;'
-      }, [
-        h('h3', { style: 'color: #ff6b35; margin-bottom: 1rem;' }, 'Switchback Features Used'),
-        h('ul', { style: 'list-style-position: inside;' }, [
-          h('li', { style: 'margin-bottom: 0.5rem;' }, 'app.visit() for instant navigation'),
-          h('li', { style: 'margin-bottom: 0.5rem;' }, 'Optimistic updates for smooth UX'),
-          h('li', { style: 'margin-bottom: 0.5rem;' }, 'Progress indicators during async operations'),
-          h('li', { style: 'margin-bottom: 0.5rem;' }, 'Form handling with POST requests'),
-          h('li', { style: 'margin-bottom: 0.5rem;' }, 'Conditional rendering based on task state'),
-        ]),
-      ]),
-    ]),
-  ]);
-};
-
-const ErrorPage = (props: ErrorProps) => {
-  return Layout([
-    h('div', {
-      style: 'background: #16213e; padding: 2rem; border-radius: 8px; border-left: 4px solid #f44336; text-align: center;'
-    }, [
-      h('h2', { style: 'color: #f44336; margin-bottom: 1rem;' }, '⚠️ Error'),
-      h('p', { style: 'color: #bbb; margin-bottom: 1.5rem;' }, props.message),
-      h('button', {
-        style: 'background: #ff6b35; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer;',
-        onClick: () => app.visit('/'),
-      }, 'Go Home'),
-    ]),
-  ]);
-};
 
 // ============================================================================
 // SWITCHBACK APP
 // ============================================================================
 
 const pages = {
-  'Home': HomePage,
-  'TaskList': TaskListPage,
+  'Main': MainPage,
   'TaskDetail': TaskDetailPage,
-  'About': AboutPage,
-  'Error': ErrorPage,
+  'PublishedTask': PublishedTaskPage,
 };
 
 // Extend window to include initialPage

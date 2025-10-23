@@ -214,18 +214,23 @@ let has_switchback_header headers =
    ROUTE HANDLERS - Switchback Integration
    ============================================================================ *)
 
-let handle_home_page () =
-  let draft_count = List.length (List.filter (fun t -> match t.state with Draft -> true | _ -> false) !tasks) in
-  let review_count = List.length (List.filter (fun t -> match t.state with InReview _ -> true | _ -> false) !tasks) in
-  let approved_count = List.length (List.filter (fun t -> match t.state with Approved _ -> true | _ -> false) !tasks) in
-  let published_count = List.length (List.filter (fun t -> match t.state with Published _ -> true | _ -> false) !tasks) in
-
-  sprintf {|{"component":"Home","props":{"stats":{"draft":%d,"inReview":%d,"approved":%d,"published":%d,"total":%d}},"url":"/"}|}
-    draft_count review_count approved_count published_count (List.length !tasks)
-
-let handle_tasks_page () =
-  sprintf {|{"component":"TaskList","props":{"tasks":%s},"url":"/tasks"}|}
+let handle_main_page () =
+  sprintf {|{"component":"Main","props":{"tasks":%s},"url":"/"}|}
     (tasks_to_json_array !tasks)
+
+let handle_published_page url =
+  (* Find the task with this published URL *)
+  match List.find_opt (fun t ->
+    match t.state with
+    | Published { url = task_url; _ } -> task_url = url
+    | _ -> false
+  ) !tasks with
+  | Some task ->
+      sprintf {|{"component":"PublishedTask","props":{"task":%s},"url":"%s"}|}
+        (task_to_json task) url
+  | None ->
+      (* URL not found - redirect to main page *)
+      handle_main_page ()
 
 let handle_task_detail_page id_str =
   try
@@ -237,12 +242,11 @@ let handle_task_detail_page id_str =
         sprintf {|{"component":"TaskDetail","props":{"task":%s,"availableActions":%s},"url":"/task/%d"}|}
           (task_to_json task) actions_json id
     | None ->
-        {|{"component":"Error","props":{"message":"Task not found"},"url":"/task/..."}|}
+        (* Redirect to main page on not found *)
+        handle_main_page ()
   with _ ->
-    {|{"component":"Error","props":{"message":"Invalid task ID"},"url":"/task/..."}|}
-
-let handle_about_page () =
-  {|{"component":"About","props":{"version":"1.0.0","backend":"OCaml","features":["Pattern matching for state transitions","Algebraic data types","Type-safe state machine","Compile-time guarantees","No invalid states possible"]},"url":"/about"}|}
+    (* Redirect to main page on invalid ID *)
+    handle_main_page ()
 
 (* API: Get all tasks *)
 let handle_api_tasks () =
@@ -354,11 +358,11 @@ let route_request method_ path headers body =
   match (method_, path) with
   (* Page routes - return JSON for Switchback, HTML wrapper otherwise *)
   | ("GET", "/") ->
-      let json = handle_home_page () in
+      let json = handle_main_page () in
       (json, is_switchback)
 
-  | ("GET", "/tasks") ->
-      let json = handle_tasks_page () in
+  | ("GET", path) when String.starts_with ~prefix:"/published/" path ->
+      let json = handle_published_page path in
       (json, is_switchback)
 
   | ("GET", path) when String.starts_with ~prefix:"/task/" path ->
@@ -366,9 +370,18 @@ let route_request method_ path headers body =
       let json = handle_task_detail_page id_str in
       (json, is_switchback)
 
-  | ("GET", "/about") ->
-      let json = handle_about_page () in
-      (json, is_switchback)
+  (* POST to /task/:id - Handle state transitions with Switchback! *)
+  | ("POST", path) when String.starts_with ~prefix:"/task/" path ->
+      let id_str = String.sub path 6 (String.length path - 6) in
+      (* Parse the POST body and perform transition *)
+      (match handle_api_transition id_str body with
+       | response when String.starts_with ~prefix:"{\"success\":true" response ->
+           (* Success - return updated task detail page *)
+           handle_task_detail_page id_str
+       | error_response ->
+           (* Error - return error in page format for Switchback onError *)
+           error_response
+      ), true
 
   (* API routes - always return JSON *)
   | ("GET", "/api/tasks") ->
@@ -386,7 +399,8 @@ let route_request method_ path headers body =
       ("SERVE_FILE:dist/app.js", true)
 
   | _ ->
-      ({|{"component":"Error","props":{"message":"Page not found"},"url":"/error"}|}, is_switchback)
+      (* Redirect unknown routes to main page *)
+      (handle_main_page (), is_switchback)
 
 (* Generate HTML wrapper for initial page load *)
 let html_wrapper page_json =

@@ -1,29 +1,22 @@
-# OCaml Demo - Switchback Integration
+# OCaml Demo - Task Workflow with Pattern Matching
 
-A task workflow system showcasing **Switchback's instant navigation** paired with **OCaml's type-safe state machines** using pattern matching and algebraic data types.
+**Type-safe state machines + Switchback = Instant navigation with compile-time guarantees**
 
-## 🎯 What Makes This Demo Special?
+This demo showcases Switchback's **instant navigation and optimistic updates** using OCaml's pattern matching and algebraic data types for bulletproof state management.
 
-This demo highlights the perfect synergy between Switchback and OCaml:
+## What Makes This Demo Special
 
-### Switchback's Strengths: Instant UX
-- **app.visit()** for zero-reload navigation between pages and states
-- **Optimistic updates** - UI responds immediately while OCaml validates
-- **Progress indicators** during async state transitions
-- **Form handling** with POST requests for state changes
-- **Error recovery** when OCaml rejects invalid transitions
-- **Smooth animations** between workflow states
+A focused demonstration of type-safe workflows:
 
-### OCaml's Strengths: Type Safety
-- **Pattern matching** for elegant state transition logic
-- **Algebraic Data Types** that model complex domain logic
-- **Compile-time guarantees** - invalid states are impossible
-- **Exhaustive checking** - compiler ensures all states are handled
-- **Pure standard library** - no frameworks, just Unix and Str modules
+- ✅ **Pattern matching for state transitions** - Compiler ensures all cases are handled
+- ✅ **Algebraic Data Types** - Invalid states are impossible to construct
+- ✅ **Instant navigation** - Zero-reload page transitions with app.visit()
+- ✅ **Optimistic updates** - UI responds instantly while server validates
+- ✅ **Zero framework dependencies** - Pure OCaml stdlib (Unix + Str) + vanilla JS
 
-## 🚀 Quick Start
+## Try It Out
 
-Want to see OCaml + Switchback in action without installing OCaml locally?
+Run the full stack (OCaml server + frontend build) in Docker:
 
 ```bash
 cd examples/demos/ocaml
@@ -32,209 +25,218 @@ docker-compose up
 
 Open http://localhost:8000
 
-## Running Natively
+**That's it!** Docker Compose handles the OCaml compilation, TypeScript bundling, and server startup automatically.
 
-To run this demo with a local OCaml installation:
+## How It Works
 
-1. Install OCaml and opam: https://ocaml.org/install
-2. Install dependencies:
-   ```bash
-   opam install dune
-   ```
-3. Build the frontend:
-   ```bash
-   cd examples/demos/ocaml
-   npm install
-   npm run build
-   ```
-4. Build and run the server:
-   ```bash
-   dune build server.exe
-   dune exec ./server.exe
-   ```
-5. Open http://localhost:8000
+### The Core Pattern
 
-## How Switchback + OCaml Work Together
+The server detects the `X-Switchback` header and responds differently:
 
-### The Workflow
-
-```
-User clicks "Submit for Review" button
-         ↓
-Switchback: Optimistic update - UI shows "In Review" instantly
-         ↓
-Browser: POST /api/tasks/1/transition {action: "review", reviewer: "Alice"}
-         ↓
-OCaml: Pattern match on (Draft, "review")
-       ✓ Valid transition!
-       → Return updated task with InReview state
-         ↓
-Switchback: Replace optimistic state with confirmed state
-         ↓
-Browser: Smooth transition complete - no page reload!
-```
-
-### Key Integration Points
-
-**1. Instant Navigation with app.visit()**
-```typescript
-// Click a task card → instant navigation
-onClick: () => app.visit(`/task/${task.id}`)
-
-// Switchback intercepts, shows progress bar
-// Fetches JSON from OCaml server
-// Mounts TaskDetail component
-// No page reload!
-```
-
-**2. Optimistic Updates**
-```typescript
-// Update UI immediately
-state.optimisticTransition = { taskId, newState };
-app.reload();  // Switchback re-renders instantly
-
-// Then send to OCaml
-transitionTask(taskId, action).then(result => {
-  if (result.success) {
-    // OCaml approved - keep the change
-    app.visit(`/task/${taskId}`);
-  } else {
-    // OCaml rejected - revert with error
-    alert(`Invalid transition: ${result.error}`);
-    app.reload();
-  }
-});
-```
-
-**3. Type-Safe State Transitions**
 ```ocaml
-(* OCaml enforces valid transitions *)
-match (task.state, action) with
-| (Draft, "review") -> (* ✓ Valid *)
-| (InReview _, "approve") -> (* ✓ Valid *)
-| (InReview _, "reject") -> (* ✓ Valid *)
-| (Published _, _) -> (* ✗ Invalid - published is final! *)
-| _ -> InvalidTransition "Cannot perform this action"
+let is_switchback =
+  List.exists (fun (k, _) -> k = "X-Switchback") headers in
+
+(* Dual response strategy *)
+if is_switchback then
+  respond_json conn task_json  (* JSON for navigation *)
+else
+  respond_html conn task_json  (* HTML for first load *)
 ```
 
-## 🎓 Understanding the State Machine
+### The Request Flow
 
-### Algebraic Data Types (ADTs)
+**1. Initial Load** (`GET /tasks` without header)
+```
+Browser → OCaml Server
+         ← Full HTML with <script>window.initialPage = {...}</script>
+Client-side app hydrates with task list (no loading state!)
+```
 
-OCaml's type system models the entire workflow as an ADT:
+**2. State Transition** (`POST /api/tasks/1/transition` with optimistic update)
+```
+User clicks "Approve"
+Client → Updates UI immediately (optimistic)
+      → OCaml Server (POST with action: "approve")
+OCaml pattern matches: (InReview _, "approve") -> Valid ✓
+      ← JSON: {"success": true, "task": {...}}
+Client confirms transition (border becomes solid)
+```
+
+**3. Page Navigation** (`GET /task/1` with `X-Switchback: true`)
+```
+User clicks task card
+Client → OCaml Server (with X-Switchback header)
+       ← JSON: {"component":"TaskDetail","props":{...}}
+Client renders detail view (no reload!)
+```
+
+### The Architecture
+
+**Backend (server.ml):**
+- Routes: `/`, `/task/:id`, `/published/*`, `/api/tasks/*`
+- Pattern matching validates all state transitions
+- ADTs model workflow states with type-safe data
+- Dual response: HTML wrapper or JSON based on `X-Switchback` header
+
+**Frontend (app.ts):**
+- Components: Main, TaskDetail, PublishedTask
+- Instant navigation with app.visit()
+- Optimistic updates with server validation
+- Auto-generated publish URLs from task titles
+
+## Understanding OCaml's Superpowers
+
+### Algebraic Data Types - "Smart Enums"
+
+**The problem with traditional approaches:**
+
+```javascript
+// JavaScript - easy to make mistakes!
+task.status = "in_review"
+task.reviewer = "Alice"  // But what if status is "draft"? No reviewer yet!
+task.url = ???           // Only exists when published...
+```
+
+Issues:
+- Which fields exist for which status?
+- Easy to forget to set/check fields
+- Typos in status strings (`"aprove"` vs `"approve"`)
+
+**OCaml's solution - States with attached data:**
+
+```ocaml
+type workflow_state =
+  | Draft                                                    (* Just a state, no data *)
+  | InReview of { reviewer: string; submitted_at: float }  (* State + reviewer info *)
+  | Approved of { reviewer: string; approved_at: float }   (* State + approval info *)
+  | Published of { reviewer: string; published_at: float; url: string }  (* State + URL! *)
+  | Rejected of { reviewer: string; reason: string; rejected_at: float }
+```
+
+**What this means:**
+- Each state can have **different fields**
+- `Draft` has no extra data
+- `InReview` automatically includes who's reviewing and when
+- `Published` is the **only** state with a `url` field
+- Compiler prevents accessing fields that don't exist for a state
+
+**Real example from server.ml:**
+
+```ocaml
+let state_to_json = function
+  | Draft -> {|{"status":"draft","label":"Draft"}|}
+  | InReview { reviewer; submitted_at } ->
+      (* Can ONLY access reviewer/submitted_at in this state *)
+      sprintf {|{..."reviewer":"%s","submitted_at":%.0f}|} reviewer submitted_at
+  | Published { url; _ } ->
+      (* Can ONLY access url in Published state *)
+      sprintf {|{..."url":"%s"}|} url
+```
+
+Compiler **forces** you to handle all cases and **prevents** accessing non-existent fields.
+
+### Pattern Matching - The State Machine
+
+Pattern matching is like `switch/case` but checks **multiple values at once** and **ensures all cases are handled**.
+
+**The state machine:**
+
+```ocaml
+(* Check BOTH current state AND action *)
+match (task.state, action) with
+  (* Draft can only transition to InReview *)
+  | (Draft, "review") ->
+      let new_state = InReview { reviewer; submitted_at = now } in
+      Success updated
+
+  (* InReview can transition to Approved or Rejected *)
+  | (InReview _, "approve") ->
+      let new_state = Approved { reviewer; approved_at = now } in
+      Success updated
+  | (InReview _, "reject") ->
+      let new_state = Rejected { reviewer; reason; rejected_at = now } in
+      Success updated
+
+  (* Published is final - no transitions allowed! *)
+  | (Published _, _) ->
+      InvalidTransition "Cannot modify published tasks"
+
+  (* Catch-all for invalid transitions *)
+  | _ ->
+      InvalidTransition "Cannot perform this action"
+```
+
+**What's happening:**
+- `(Draft, "review")` - Only allow if state is `Draft` AND action is `"review"`
+- `(InReview _, "approve")` - The `_` means "I don't care about the data, just that it's InReview"
+- `(Published _, _)` - Published with ANY action gets rejected
+- Compiler error if you forget a case!
+
+**Compared to JavaScript/TypeScript:**
+
+```javascript
+// Easy to forget cases, no compiler help
+function transitionTask(task, action) {
+  if (task.status === "draft" && action === "review") {
+    task.status = "in_review";
+    task.reviewer = reviewer;  // Oops, forgot submitted_at!
+  } else if (task.status === "in_review" && action === "approve") {
+    task.status = "approved";
+  }
+  // What if we forget to handle "reject"?
+  // What if we typo "aprove"?
+  // No compiler to catch these!
+}
+```
+
+### Pattern Matching Everywhere
+
+**Available actions per state:**
+
+```ocaml
+let get_available_actions = function
+  | Draft -> ["review"]
+  | InReview _ -> ["approve"; "reject"]
+  | Approved _ -> ["publish"]
+  | Rejected _ -> ["draft"]
+  | Published _ -> []  (* Final state! *)
+```
+
+Add a new state? Compiler errors until you handle it everywhere!
+
+### Safe Refactoring
+
+Add a 6th state? The compiler shows **every** place you need to update:
 
 ```ocaml
 type workflow_state =
   | Draft
   | InReview of { reviewer: string; submitted_at: float }
+  | InTesting of { tester: string; test_suite_url: string }  (* NEW! *)
   | Approved of { reviewer: string; approved_at: float }
   | Published of { reviewer: string; published_at: float; url: string }
   | Rejected of { reviewer: string; reason: string; rejected_at: float }
 ```
 
-**Why this matters:**
-- Each state can have different data (e.g., Published has a URL, Rejected has a reason)
-- Compiler ensures you handle all states
-- Impossible to create invalid combinations
-- Pattern matching is exhaustive
+Compiler errors guide you:
+- `state_to_json` - Missing InTesting case
+- `transition_task` - What transitions are valid?
+- `get_available_actions` - What actions are available?
 
-### Pattern Matching for Transitions
+Fix all errors → refactoring complete. Nothing missed.
 
-```ocaml
-let can_transition (current: workflow_state) (target: string) : bool =
-  match (current, target) with
-  | (Draft, "review") -> true              (* ✓ Submit draft for review *)
-  | (InReview _, "approve") -> true        (* ✓ Approve reviewed task *)
-  | (InReview _, "reject") -> true         (* ✓ Reject reviewed task *)
-  | (Approved _, "publish") -> true        (* ✓ Publish approved task *)
-  | (Rejected _, "draft") -> true          (* ✓ Resubmit rejected task *)
-  | (Published _, _) -> false              (* ✗ Published is final! *)
-  | _ -> false                             (* ✗ All other transitions invalid *)
+## Key Files
+
 ```
-
-**Compared to other approaches:**
-
-❌ **JavaScript/TypeScript:**
-```javascript
-function canTransition(current, target) {
-  if (current.status === "draft" && target === "review") return true;
-  if (current.status === "in_review" && target === "approve") return true;
-  // ... easy to miss cases, no compile-time checking
-  return false;
-}
-```
-
-✅ **OCaml:**
-- Compiler warns if you miss a case
-- Type system ensures current is a valid workflow_state
-- Refactoring is safe - add a new state and compiler shows everywhere you need to update
-
-## Switchback Features in Action
-
-### 1. Instant Page Navigation
-
-Traditional multi-page app:
-```
-Click "Tasks" link
-  → Full page reload (white flash!)
-  → Server renders HTML
-  → Browser parses & displays
-  → Total: 200-500ms
-```
-
-With Switchback:
-```
-Click "Tasks" link
-  → app.visit('/tasks') intercepts
-  → Fetch JSON from OCaml (50ms)
-  → Mount TaskList component (10ms)
-  → Total: 60ms, no white flash!
-```
-
-### 2. Optimistic UI Updates
-
-Without optimistic updates:
-```
-Click "Approve" button
-  → Button disabled
-  → Loading spinner shows
-  → Wait for server (300ms)
-  → Update UI
-  → Total: Feels slow 😞
-```
-
-With Switchback + optimistic updates:
-```
-Click "Approve" button
-  → UI updates instantly ⚡
-  → Task shows "Approved" with dashed border
-  → Server validates in background
-  → Border becomes solid when confirmed
-  → Total: Feels instant! 😊
-```
-
-### 3. Progress Indicators
-
-Switchback automatically shows a progress bar during:
-- Page navigation (app.visit)
-- API calls (if configured)
-- State transitions
-
-No manual loading state management needed!
-
-### 4. Error Recovery
-
-```typescript
-transitionTask(id, "approve").then(result => {
-  if (result.success) {
-    // Happy path - OCaml approved
-    app.visit(`/task/${id}`);
-  } else {
-    // Error path - OCaml rejected
-    alert(`Cannot approve: ${result.error}`);
-    // Switchback gracefully reverts optimistic update
-  }
-});
+ocaml/
+├── server.ml              # OCaml HTTP server with pattern matching
+│                          # Routes, state machine logic, JSON serialization
+├── app.ts                 # Switchback frontend (Main, TaskDetail, PublishedTask)
+├── dune-project            # Dune build configuration
+├── package.json           # Frontend build (Vite + TypeScript)
+├── docker-compose.yml     # One command to run everything
+└── README.md              # You are here
 ```
 
 ## Task Workflow States
@@ -261,278 +263,53 @@ transitionTask(id, "approve").then(result => {
               (FINAL)
 ```
 
-## API Endpoints
-
-### Page Routes (Switchback)
-
-| Route | Without X-Switchback | With X-Switchback |
-|-------|---------------------|-------------------|
-| `GET /` | HTML wrapper | JSON: Home component |
-| `GET /tasks` | HTML wrapper | JSON: TaskList component |
-| `GET /task/:id` | HTML wrapper | JSON: TaskDetail component |
-| `GET /about` | HTML wrapper | JSON: About component |
-
-### API Routes
-
-| Method | Route | Purpose |
-|--------|-------|---------|
-| GET | `/api/tasks` | Fetch all tasks |
-| POST | `/api/tasks` | Create new task |
-| POST | `/api/tasks/:id/transition` | Transition task state |
-
-**Example: Transition a task**
-```bash
-curl -X POST http://localhost:8000/api/tasks/1/transition \
-  -H "Content-Type: application/json" \
-  -d '{
-    "action": "approve",
-    "reviewer": "Alice",
-    "reason": "Looks good!"
-  }'
-```
-
-Response:
-```json
-{
-  "success": true,
-  "task": {
-    "id": 1,
-    "title": "Implement authentication",
-    "state": {
-      "status": "approved",
-      "label": "Approved",
-      "reviewer": "Alice",
-      "approved_at": 1704067200
-    }
-  }
-}
-```
-
-## File Structure
-
-```
-ocaml/
-├── server.ml              # OCaml HTTP server (stdlib only!)
-├── app.ts                 # Switchback frontend app
-├── dune-project            # Dune build configuration
-├── dune                   # Build rules
-├── package.json           # Frontend build scripts
-├── vite.config.ts         # Vite bundler config
-├── Dockerfile             # Docker multi-stage build
-├── docker-compose.yml     # Docker orchestration
-└── README.md              # This file
-```
-
-## Pattern Matching Examples
-
-### Extracting State Data
-
-```ocaml
-let get_reviewer_name (state: workflow_state) : string option =
-  match state with
-  | Draft -> None
-  | InReview { reviewer; _ } -> Some reviewer
-  | Approved { reviewer; _ } -> Some reviewer
-  | Published { reviewer; _ } -> Some reviewer
-  | Rejected { reviewer; _ } -> Some reviewer
-```
-
-Compiler ensures:
-- All cases are handled (exhaustive)
-- Field access is type-safe (reviewer exists in those states)
-- Cannot accidentally access fields that don't exist
-
-### State-Specific Actions
-
-```ocaml
-let get_available_actions = function
-  | Draft -> ["review"]
-  | InReview _ -> ["approve"; "reject"]
-  | Approved _ -> ["publish"]
-  | Rejected _ -> ["draft"]
-  | Published _ -> []  (* No actions - final state! *)
-```
-
-The `function` keyword is syntactic sugar for `match` on a single argument.
-
-## Why OCaml + Switchback?
-
-### OCaml's Advantages
-
-| Feature | OCaml | JavaScript/TypeScript |
-|---------|-------|----------------------|
-| **Type Safety** | Compile-time guarantees | Runtime errors possible |
-| **Pattern Matching** | First-class, exhaustive | Limited switch/if-else |
-| **ADTs** | Native support | Emulated with unions |
-| **Performance** | Native compiled code | V8 JIT |
-| **Immutability** | Default | Manual (const, Object.freeze) |
-| **Refactoring** | Compiler-guided | Hope and pray |
-
-### Switchback's Advantages
-
-| Feature | Switchback | Traditional SPA |
-|---------|-----------|-----------------|
-| **Bundle Size** | ~50KB | 200KB+ (React/Vue) |
-| **Learning Curve** | Minimal | Framework-specific |
-| **Navigation** | app.visit() built-in | Router library needed |
-| **Optimistic Updates** | Simple state mutations | Complex state management |
-| **Backend Coupling** | Works with any backend | Often tied to Node.js |
-| **Progressive Enhancement** | Graceful degradation | Often requires JS |
-
-### Perfect Together
-
-✅ **Type-safe backend** + **instant frontend** = Best of both worlds
-✅ **OCaml validates** business logic, **Switchback handles** UX
-✅ **Compile-time safety** on server, **runtime speed** on client
-✅ **Pattern matching** for logic, **app.visit()** for navigation
-
 ## Extending This Demo
 
-### Add New Workflow States
+**Add database persistence:** Replace `tasks : task list ref` with PostgreSQL/SQLite using Caqti
 
-1. Update the ADT in `server.ml`:
-```ocaml
-type workflow_state =
-  | Draft
-  | InReview of { reviewer: string; submitted_at: float }
-  | Approved of { reviewer: string; approved_at: float }
-  | InTesting of { tester: string; test_suite_url: string }  (* NEW! *)
-  | Published of { reviewer: string; published_at: float; url: string }
-  | Rejected of { reviewer: string; reason: string; rejected_at: float }
+**Add WebSockets:** Broadcast state changes to all connected clients with real-time updates
+
+**Add authentication:** Use OCaml's Dream framework for session management and user roles
+
+**Add more states:** Extend the ADT (e.g., `InTesting`, `Scheduled`) - compiler guides the refactor
+
+## Running Natively (Without Docker)
+
+**Prerequisites:**
+- [OCaml 5.2+](https://ocaml.org/install) for the server
+- [Node.js](https://nodejs.org/) for frontend build (or use Docker)
+
+**Steps:**
+```bash
+cd examples/demos/ocaml
+
+# 1. Install OCaml dependencies
+opam install dune
+
+# 2. Build frontend with Node
+npm install
+npm run build
+
+# 3. Compile OCaml server
+dune build server.exe
+
+# 4. Run server
+dune exec ./server.exe
 ```
 
-2. Compiler will show errors everywhere this needs updating:
-   - `state_to_json` function
-   - `can_transition` function
-   - `transition_task` function
-   - `get_available_actions` function
+Open http://localhost:8000
 
-3. Fix all compilation errors, and you're done! The type system ensures correctness.
+## Performance
 
-### Add Persistence
+OCaml compiles to native code with zero-cost abstractions:
+- Minimal memory footprint (~15MB for this server)
+- Pattern matching compiled to efficient jump tables
+- Production build: `dune build --profile=release`
 
-Replace in-memory storage with a database:
+## What This Demonstrates
 
-```ocaml
-(* Using PostgreSQL via caqti *)
-let save_task task =
-  let state_json = state_to_json task.state in
-  Caqti_lwt.query
-    "INSERT INTO tasks (id, title, state) VALUES (?, ?, ?::jsonb)"
-    (task.id, task.title, state_json)
-```
+**OCaml:** Type-safe state machines with pattern matching prevent invalid transitions at compile time
 
-### Add WebSocket for Real-Time Updates
+**Switchback:** Instant navigation (app.visit), optimistic updates, auto-generated publish URLs, shareable published pages
 
-```ocaml
-(* Notify all connected clients when state changes *)
-let notify_clients task =
-  List.iter (fun client ->
-    send_json client (task_to_json task)
-  ) !connected_clients
-```
-
-Then update the frontend to listen for WebSocket messages and call `app.reload()`.
-
-## Troubleshooting
-
-**App not loading?**
-- Make sure you've run `npm run build` in the demo directory
-- Check that `dist/app.js` exists
-- Check browser console for errors
-
-**OCaml compilation errors?**
-- Make sure OCaml 5.2+ is installed: `ocaml --version`
-- Install dune: `opam install dune`
-- Check for syntax errors in server.ml
-
-**Docker issues?**
-- Make sure port 8000 is not in use: `lsof -i :8000`
-- Rebuild with `docker-compose build --no-cache`
-- Check logs: `docker-compose logs`
-
-**State transitions not working?**
-- Check browser DevTools Network tab
-- Verify OCaml server is receiving POST requests
-- Check server console for pattern match errors
-
-## Performance Notes
-
-### OCaml Server
-- **Startup time:** ~10ms (native compiled binary)
-- **Memory footprint:** ~15MB
-- **Request latency:** <1ms per request
-- **Throughput:** Thousands of requests/second
-
-### Switchback Client
-- **Bundle size:** ~52KB minified
-- **Navigation:** ~20ms (no network)
-- **API calls:** ~50ms (depends on network)
-- **Optimistic updates:** ~5ms (instant perceived performance)
-
-## Security Considerations
-
-This is a **demo application**. For production, add:
-
-- ✅ Input validation (use Yojson for proper JSON parsing)
-- ✅ CSRF protection for state transitions
-- ✅ Rate limiting on API endpoints
-- ✅ Authentication (JWT, OAuth, etc.)
-- ✅ HTTPS with TLS certificates
-- ✅ Content Security Policy headers
-- ✅ SQL injection prevention (use parameterized queries)
-- ✅ Session management
-
-## Why No Framework?
-
-We deliberately use **only OCaml's standard library** (Unix + Str modules) to show:
-
-1. **Simplicity** - No complex dependencies
-2. **Control** - Full understanding of every line
-3. **Education** - Learn HTTP from first principles
-4. **Performance** - No framework overhead
-
-For production, consider frameworks like:
-- **Dream** - Modern web framework with excellent ergonomics
-- **Opium** - Sinatra-like framework for OCaml
-- **CoHTTP** - Composable HTTP library
-
-## Comparison with Other Demos
-
-- **Erlang Demo**: SSR with HTML morphing, Actor model
-- **Rust Demo**: Embedded SQLite database
-- **Go Demo**: Goroutines for true concurrency
-- **C Demo**: Optimistic updates with low-level HTTP
-- **Deno Demo**: Shared TypeScript types
-- **C# Demo**: LINQ query composition
-- **OCaml Demo**: **Pattern matching with type-safe state machines + Switchback instant navigation**
-
-Each demo showcases different Switchback integrations. **OCaml's pattern matching makes state transitions elegant and safe**, while **Switchback makes them feel instant**.
-
-## Learn More About OCaml
-
-- [OCaml Manual](https://ocaml.org/manual/) - Official documentation
-- [Real World OCaml](https://dev.realworldocaml.org/) - Comprehensive guide
-- [OCaml from the Ground Up](https://ocamlbook.org/) - Tutorial
-- [99 Problems in OCaml](https://ocaml.org/problems) - Practice exercises
-- [Jane Street Tech Blog](https://blog.janestreet.com/) - OCaml in production
-
-## Learn More About Switchback
-
-- [Switchback Documentation](https://github.com/switchback-org/switchback) - Official docs
-- [HTML-over-the-Wire](https://hotwired.dev/) - Similar concepts
-- [Progressive Enhancement](https://developer.mozilla.org/en-US/docs/Glossary/Progressive_Enhancement)
-
-## Next Steps
-
-Try modifying the demo to:
-1. Add new workflow states (e.g., InTesting, NeedsRevision)
-2. Implement task assignment and reassignment
-3. Add task comments and discussion threads
-4. Create a task search and filter system
-5. Add persistence with SQLite or PostgreSQL
-6. Implement WebSocket for real-time collaboration
-7. Add task dependencies (block/blocked-by relationships)
-8. Create task templates for common workflows
-
-Have fun exploring type-safe state machines with OCaml and instant navigation with Switchback!
+**Together:** Backend correctness + instant UX with zero framework dependencies
