@@ -1,38 +1,34 @@
 # Switchback
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/ge3224/switchback)
+[![GitHub Release](https://img.shields.io/github/v/release/ge3224/switchback)](https://github.com/ge3224/switchback/releases)
 [![No Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://github.com/ge3224/switchback)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](https://github.com/ge3224/switchback/actions)
+[![GitHub License](https://img.shields.io/github/license/ge3224/switchback)](https://github.com/ge3224/switchback/blob/main/LICENSE)
+[![CI](https://github.com/ge3224/switchback/actions/workflows/ci.yml/badge.svg)](https://github.com/ge3224/switchback/actions/workflows/ci.yml)
 
-Build single-page apps with your preferred server stack.
+Build Single-Page Apps that integrate with your preferred server stack. Build in vanilla TypeScript—no framework adoption, zero dependencies.
 
-**Zero dependencies. Vendorable. Auditable. ~300 lines.**
+Switchback is ~300 lines that handle link interception, form handling, and DOM updates. Read the source code in one sitting. Vendor it into your project, modify it as needed.
 
 ## Examples
 
-See [examples/demos/](examples/demos/) for full-stack integration examples:
+Here are full-stack demos in different languages. Docker keeps them isolated for convenient experimentation. See [examples/demos/](examples/demos/).
 
 - **C** - Optimistic updates for instant UX
-- **C#** - .NET minimal APIs with dependency injection
+- **C#** - Data visualization with LINQ query composition
 - **Deno** - TypeScript type sharing between client and server
-- **Erlang** - Server-side rendering with HTML morphing and gen_server state management
+- **Erlang** - Server-side rendering with HTML morphing and stateful backend
 - **Go** - Concurrent worker pools with true parallelism
-- **OCaml** - Pattern matching with type-safe state machines using algebraic data types
-- **PHP** - Vanilla PHP with no framework dependencies
+- **OCaml** - Workflow states with compiler-enforced safety
+- **PHP** - Server-side routing with SPA navigation
 - **Rust** - Image processing pipeline with partial reloads and upload progress tracking
-- **Zig** - Blazingly fast with zero dependencies
-- **Assembly** - x86-64 assembly with NASM (because why not?)
-
-Each demo includes Docker setup for easy testing.
+- **Zig** - Form handling with POST requests and server-side state
+- **Assembly** - x86-64 assembly (because why not?)
 
 ## Philosophy
 
-Switchback lets you create fully client-side rendered SPAs while keeping your familiar backend workflow. It works by:
-
 - **No client-side routing** - Your server owns the routes
 - **No API needed** - Just return page data from controllers
-- **Traditional patterns** - Build controllers and views like always
+- **Proven patterns** - Build with controllers and views
 - **Framework agnostic** - Works with any backend
 
 ## Features
@@ -44,52 +40,62 @@ Switchback lets you create fully client-side rendered SPAs while keeping your fa
 - Scroll restoration (remembers scroll position)
 - Partial reloads (only refresh specific props)
 - Error handling (server errors, validation errors)
+- SSR support (morph server-rendered HTML into the DOM)
 
 ## Installation
 
-### Via git submodule (recommended for vendoring)
+### Browser-ready bundle (no build step)
+
+Download the latest release:
+
+```html
+<!-- ESM -->
+<script type="module">
+  import { newSwitchback } from './switchback.esm.js';
+  // ...
+</script>
+
+<!-- Or UMD -->
+<script src="./switchback.umd.js"></script>
+<script>
+  const { newSwitchback } = Switchback;
+  // ...
+</script>
+```
+
+Get bundles from [releases](https://github.com/ge3224/switchback/releases).
+
+### Via git submodule (for TypeScript projects)
 
 ```bash
 git submodule add https://github.com/ge3224/switchback vendor/switchback
 ```
+
+Then import from `vendor/switchback`.
 
 ## Usage
 
 ### Client Setup
 
 ```typescript
-import { newSwitchback } from './vendor/switchback/src/index.ts';
+import { newSwitchback } from './vendor/switchback';
 
 // Your page components
 const pages = {
-  'Home': (props: any) => {
+  'Home': (props) => {
     const div = document.createElement('div');
-    const h1 = document.createElement('h1');
-    h1.textContent = props.title;
-    div.appendChild(h1);
-    return div;
-  },
-  'Users/Show': (props: any) => {
-    const div = document.createElement('div');
-    const h1 = document.createElement('h1');
-    h1.textContent = props.user.name;
-    div.appendChild(h1);
+    div.innerHTML = `<h1>${props.title}</h1>`;
     return div;
   },
 };
 
-// Initialize Switchback
-const app = newSwitchback({
-  // Resolve component by name
-  resolve: (name: string) => pages[name],
-
-  // Setup/render function
+// Initialize
+newSwitchback({
+  resolve: (name) => pages[name],
   setup: ({ el, App, props }) => {
     el.innerHTML = '';
     el.appendChild(App(props));
   },
-
-  // Optional: Pass initial page data from server
   initialPage: window.initialPage,
 });
 ```
@@ -102,7 +108,6 @@ const app = newSwitchback({
 <head>
   <title>My App</title>
   <script>
-    // Pass initial page data from server
     window.initialPage = <?= json_encode($page) ?>;
   </script>
 </head>
@@ -115,105 +120,51 @@ const app = newSwitchback({
 
 ### Server Setup
 
-Your server returns JSON when `X-Switchback` header is present:
+Your server returns JSON when the `X-Switchback` header is present:
 
-**Go example:**
+**Java/Spring Boot example:**
 
-```go
-func usersHandler(w http.ResponseWriter, r *http.Request) {
-    id := r.PathValue("id")
-    user := db.GetUser(id)
+```java
+@GetMapping("/users/{id}")
+public ResponseEntity<?> showUser(@PathVariable String id,
+                                   @RequestHeader(value = "X-Switchback", required = false) String switchback) {
+    User user = userService.findById(id);
 
-    if r.Header.Get("X-Switchback") != "" {
-        json.NewEncoder(w).Encode(map[string]any{
-            "component": "Users/Show",
-            "props":     map[string]any{"user": user},
-            "url":       "/users/" + id,
-        })
-        return
+    Map<String, Object> page = Map.of(
+        "component", "Users/Show",
+        "props", Map.of("user", user),
+        "url", "/users/" + id
+    );
+
+    if (switchback != null) {
+        return ResponseEntity.ok(page);  // Return JSON
     }
 
-    renderApp(w, Page{
-        Component: "Users/Show",
-        Props:     map[string]any{"user": user},
-        URL:       "/users/" + id,
-    })
-}
-```
-
-**C example:**
-
-```c
-void users_handler(struct mg_connection *c, struct mg_http_message *hm) {
-    char *id = get_param(hm, "id");
-    User *user = db_get_user(id);
-
-    if (mg_http_get_header(hm, "X-Switchback") != NULL) {
-        mg_http_reply(c, 200, "Content-Type: application/json\r\n",
-            "{\"component\":\"Users/Show\","
-            "\"props\":{\"user\":%s},"
-            "\"url\":\"/users/%s\"}",
-            user_to_json(user), id);
-        return;
-    }
-
-    render_app(c, (Page){
-        .component = "Users/Show",
-        .props = user_to_json(user),
-        .url = format("/users/%s", id)
-    });
+    return ResponseEntity.ok(renderHtml(page));  // Return HTML wrapper
 }
 ```
 
 ### Component Examples
 
-Links and forms work automatically:
+Add `data-swbk` to links and forms you want intercepted:
 
 ```typescript
-// Links - no special handling needed
-const UserList = ({ users }) => {
-  const div = document.createElement('div');
-  const h1 = document.createElement('h1');
-  h1.textContent = 'Users';
-  div.appendChild(h1);
+// Intercepted link
+const link = document.createElement('a');
+link.href = '/users/123';
+link.setAttribute('data-swbk', '');
+link.textContent = 'View User';
 
-  users.forEach(user => {
-    const a = document.createElement('a');
-    a.href = `/users/${user.id}`;
-    a.textContent = user.name;
-    div.appendChild(a);
-  });
+// Intercepted form
+const form = document.createElement('form');
+form.action = '/users/123';
+form.method = 'post';
+form.setAttribute('data-swbk', '');
 
-  return div;
-};
-
-// Forms - automatically intercepted
-const UserEdit = ({ user }) => {
-  const form = document.createElement('form');
-  form.action = `/users/${user.id}`;
-  form.method = 'post';
-
-  const input = document.createElement('input');
-  input.name = 'name';
-  input.value = user.name;
-
-  const button = document.createElement('button');
-  button.type = 'submit';
-  button.textContent = 'Save';
-
-  form.appendChild(input);
-  form.appendChild(button);
-  return form;
-};
-
-// Opt-out with data-no-swizzle
-const ExternalLink = () => {
-  const a = document.createElement('a');
-  a.href = 'https://example.com';
-  a.setAttribute('data-no-swizzle', '');
-  a.textContent = 'External';
-  return a;
-};
+// Regular link (not intercepted)
+const external = document.createElement('a');
+external.href = 'https://example.com';
+external.textContent = 'External Site';
 ```
 
 ## API
@@ -318,26 +269,15 @@ link.setAttribute('data-preserve-scroll', '');
 link.textContent = 'Link';
 ```
 
-## Why Switchback?
-
-- **Simple**: No complex client-side routing or state management required
-- **Familiar**: Use server-side patterns you already know
-- **Fast**: Page transitions without full page reloads
-- **Auditable**: ~300 lines of readable TypeScript
-- **Zero deps**: No external dependencies to audit
-- **Vendorable**: Easy to vendor via git submodules
-- **Flexible**: Works with any backend framework
-
 ## Inspiration
 
 Switchback draws inspiration from [Inertia.js](https://inertiajs.com) but is designed specifically for vanilla TypeScript projects. Key differences:
 
 - **No framework dependency** - Works with vanilla DOM or any rendering approach
 - **Minimal** - ~300 lines you can audit vs thousands
-- **Vendorable** - Designed to be vendored via git submodules
-- **Server-agnostic** - Works with any backend that can return JSON
-
-The `X-Switchback` header is compatible with the Inertia pattern, so you can adapt Inertia server-side adapters if needed.
+- **Vendorable** - Git submodule, direct copy, or browser bundle
+- **No adapters** - Just check a header and return JSON
+- **Optional SSR** - Backend can send HTML directly, no Node.js process required
 
 ## License
 
