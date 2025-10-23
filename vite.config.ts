@@ -8,11 +8,20 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "Switchback",
-      fileName: "index",
-      formats: ["es"],
+      fileName: (format) => {
+        const suffix = process.env.BUILD_UNMINIFIED ? "" : ".min";
+        if (format === "es") return "index.js";
+        if (format === "umd") return `switchback.umd${suffix}.js`;
+        return `switchback.iife${suffix}.js`;
+      },
+      formats: ["es", "umd", "iife"],
     },
+    minify: process.env.BUILD_UNMINIFIED ? false : "esbuild",
     rollupOptions: {
       external: [],
+      output: {
+        exports: "named",
+      },
     },
   },
   plugins: [dts({ include: ["src/index.ts"] })],

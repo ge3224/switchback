@@ -32,14 +32,51 @@ jobs:
       - name: Run type check
         run: pnpm type-check
 
-      - name: Build
+      - name: Build minified versions
         run: pnpm build
 
-      - name: Create tarball
-        run: tar -czf switchback-dist.tar.gz dist/
+      - name: Copy minified files
+        run: |
+          mkdir -p release
+          cp dist/switchback.iife.min.js release/
+          cp dist/switchback.umd.min.js release/
+
+      - name: Build non-minified versions
+        run: BUILD_UNMINIFIED=true pnpm build
+
+      - name: Copy non-minified files
+        run: |
+          cp dist/switchback.iife.js release/
+          cp dist/switchback.umd.js release/
+
+      - name: Create release artifacts
+        run: |
+          # Create tarball of all dist files
+          tar -czf switchback-dist.tar.gz dist/
+
+          # Generate checksums
+          cd release
+          sha256sum switchback.iife.min.js > switchback.iife.min.js.sha256
+          sha256sum switchback.iife.js > switchback.iife.js.sha256
+          sha256sum switchback.umd.min.js > switchback.umd.min.js.sha256
+          sha256sum switchback.umd.js > switchback.umd.js.sha256
+          cd ..
+
+          # Create checksums for tarball
+          sha256sum switchback-dist.tar.gz > switchback-dist.tar.gz.sha256
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: switchback-dist.tar.gz
+          files: |
+            switchback-dist.tar.gz
+            switchback-dist.tar.gz.sha256
+            release/switchback.iife.min.js
+            release/switchback.iife.min.js.sha256
+            release/switchback.iife.js
+            release/switchback.iife.js.sha256
+            release/switchback.umd.min.js
+            release/switchback.umd.min.js.sha256
+            release/switchback.umd.js
+            release/switchback.umd.js.sha256
           generate_release_notes: true
