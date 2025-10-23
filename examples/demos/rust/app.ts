@@ -340,8 +340,8 @@ style.textContent = `
 
   .gallery-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
   }
 
   .gallery-item {
@@ -360,15 +360,44 @@ style.textContent = `
 
   .gallery-item img {
     width: 100%;
-    height: 200px;
-    object-fit: cover;
+    height: 150px;
+    object-fit: contain;
     display: block;
+    background: #f5f5f5;
   }
 
   .gallery-item-info {
     padding: 8px;
     font-size: 12px;
     color: #666;
+  }
+
+  .gallery-item-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(231, 76, 60, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+    z-index: 10;
+  }
+
+  .gallery-item:hover .gallery-item-delete {
+    opacity: 1;
+  }
+
+  .gallery-item-delete:hover {
+    background: rgba(192, 57, 43, 1);
   }
 
   .empty-state {
@@ -489,6 +518,16 @@ async function loadSampleImages() {
     '/samples/sample3.jpg',
     '/samples/sample4.jpg',
     '/samples/sample5.jpg',
+    '/samples/sample6.jpg',
+    '/samples/sample7.jpg',
+    '/samples/sample8.jpg',
+    '/samples/sample9.jpg',
+    '/samples/sample10.jpg',
+    '/samples/sample11.jpg',
+    '/samples/sample12.jpg',
+    '/samples/sample13.jpg',
+    '/samples/sample14.jpg',
+    '/samples/sample15.jpg',
   ];
 
   // Fetch and convert to File objects
@@ -548,6 +587,14 @@ async function uploadFiles(files: File[]) {
     const file = files[i];
     await uploadSingleFile(file);
   }
+
+  // Scroll to processing queue section after uploads complete
+  setTimeout(() => {
+    const queueSection = document.querySelector('.queue-section');
+    if (queueSection) {
+      queueSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 300);
 
   // Don't start polling - user must click "Process Images" first
 }
@@ -744,6 +791,45 @@ function closeModal() {
   app.reload({ only: ['modal'] });
 }
 
+async function deleteImage(imageId: string, event?: Event) {
+  if (event) {
+    event.stopPropagation(); // Prevent opening modal when clicking delete
+  }
+
+  if (!confirm('Are you sure you want to delete this image?')) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/jobs/${imageId}`, {
+      method: 'DELETE',
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // Remove from gallery state
+      state.gallery = state.gallery.filter(img => img.id !== imageId);
+
+      // Remove from jobs state if exists
+      delete state.jobs[imageId];
+
+      // Close modal if this image was open
+      if (state.selectedImage && state.selectedImage.id === imageId) {
+        state.selectedImage = null;
+        app.reload({ only: ['gallery', 'modal'] });
+      } else {
+        app.reload({ only: ['gallery'] });
+      }
+    } else {
+      alert('Failed to delete image');
+    }
+  } catch (error) {
+    console.error('Failed to delete image:', error);
+    alert('Failed to delete image');
+  }
+}
+
 // Components
 
 function UploadSection() {
@@ -895,6 +981,11 @@ function Gallery(props: { gallery: any[] }) {
       h('div', { class: 'gallery-grid' },
         ...props.gallery.map(image =>
           h('div', { class: 'gallery-item', onClick: () => openImageModal(image) },
+            h('button', {
+              class: 'gallery-item-delete',
+              onClick: (e: Event) => deleteImage(image.id, e),
+              title: 'Delete image'
+            }, '×'),
             h('img', { src: image.thumbnail_url, alt: image.filename }),
             h('div', { class: 'gallery-item-info' }, image.filename)
           )
@@ -911,7 +1002,14 @@ function ImageModal() {
   return h('div', { class: 'modal', 'data-swbk-section': 'modal', onClick: closeModal },
     h('div', { class: 'modal-content', onClick: (e: Event) => e.stopPropagation() },
       h('button', { class: 'modal-close', onClick: closeModal }, '×'),
-      h('h2', {}, image.filename),
+      h('h2', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+        image.filename,
+        h('button', {
+          class: 'upload-button',
+          style: { background: '#e74c3c', padding: '8px 16px', fontSize: '14px' },
+          onClick: () => deleteImage(image.id)
+        }, '🗑️ Delete')
+      ),
       h('div', { class: 'modal-images' },
         h('div', { class: 'modal-image' },
           h('img', { src: image.thumbnail_url, alt: 'Thumbnail' }),

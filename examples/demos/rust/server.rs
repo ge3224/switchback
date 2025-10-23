@@ -76,7 +76,7 @@ impl AppState {
     }
 
     fn create_job(&self, filename: String) -> String {
-        let job_id = uuid::Uuid::new_v4().to_string();
+        let job_id = generate_id();
         let timestamp = timestamp_ms();
 
         let job = ProcessingJob {
@@ -128,11 +128,6 @@ impl AppState {
         true
     }
 
-    fn get_job(&self, job_id: &str) -> Option<ProcessingJob> {
-        let jobs = self.jobs.lock().unwrap();
-        jobs.get(job_id).cloned()
-    }
-
     fn get_jobs_by_ids(&self, ids: Vec<String>) -> Vec<ProcessingJob> {
         let jobs = self.jobs.lock().unwrap();
         ids.iter()
@@ -161,7 +156,6 @@ fn main() {
     spawn_worker_pool(Arc::clone(&state), WORKER_COUNT);
 
     // Setup signal handlers for graceful shutdown
-    #[cfg(feature = "server")]
     {
         use signal_hook::consts::signal::*;
         use signal_hook::iterator::Signals;
@@ -501,8 +495,29 @@ fn handle_get_gallery(state: &Arc<AppState>) -> Vec<u8> {
 }
 
 fn handle_delete_job(job_id: &str, state: &Arc<AppState>) -> Vec<u8> {
-    let mut jobs = state.jobs.lock().unwrap();
-    jobs.remove(job_id);
+    // Remove from jobs
+    {
+        let mut jobs = state.jobs.lock().unwrap();
+        jobs.remove(job_id);
+    }
+
+    // Remove from gallery
+    {
+        let mut gallery = state.gallery.lock().unwrap();
+        gallery.retain(|img| img.id != job_id);
+    }
+
+    // Delete image files
+    let files = vec![
+        format!("public/uploads/original/{}", job_id),
+        format!("public/uploads/thumb/{}.jpg", job_id),
+        format!("public/uploads/medium/{}.jpg", job_id),
+        format!("public/uploads/grayscale/{}.jpg", job_id),
+    ];
+
+    for file in files {
+        fs::remove_file(file).ok(); // Ignore errors if file doesn't exist
+    }
 
     response_json(&serde_json::json!({
         "success": true
@@ -570,7 +585,6 @@ fn spawn_worker_pool(state: Arc<AppState>, worker_count: usize) {
     }
 }
 
-#[cfg(feature = "server")]
 fn process_image(state: &Arc<AppState>, job_id: &str, worker_id: usize) {
     use image::imageops::FilterType;
 
@@ -681,12 +695,24 @@ fn process_image(state: &Arc<AppState>, job_id: &str, worker_id: usize) {
     println!("Worker {} completed job {}", worker_id, job_id);
 }
 
-#[cfg(not(feature = "server"))]
-fn process_image(_state: &Arc<AppState>, _job_id: &str, _worker_id: usize) {
-    // Stub for non-server builds
-}
-
 // Utility functions
+
+fn generate_id() -> String {
+    // Generate a unique ID using timestamp + process ID + counter
+    // Format: {timestamp_ms}-{process_id}-{random_suffix}
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    let timestamp = timestamp_ms();
+    let pid = std::process::id();
+    let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
+
+    // Create a pseudo-random suffix using timestamp bits
+    let random_suffix = (timestamp ^ (pid as u64) ^ (counter as u64)) & 0xFFFF;
+
+    format!("{:x}-{:x}-{:04x}", timestamp, pid, random_suffix)
+}
 
 fn timestamp_ms() -> u64 {
     SystemTime::now()
