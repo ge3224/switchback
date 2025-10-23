@@ -269,7 +269,7 @@ export function newSwitchback(config: SwitchbackConfig): Switchback {
         const template = document.createElement('template');
         template.innerHTML = currentPage.html.trim();
         const content = template.content.firstElementChild;
-        if (content) el.appendChild(content);
+        if (content) el.firstElementChild ? morphElement(el.firstElementChild, content) : el.appendChild(content);
       } else {
         Promise.resolve(config.resolve(currentPage.component)).then(function setupComponent(Component) {
           config.setup({ el, App: Component, props: currentPage!.props });
