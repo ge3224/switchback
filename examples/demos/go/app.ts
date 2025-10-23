@@ -53,81 +53,10 @@ style.textContent = `
     line-height: 1.6;
   }
 
-  nav {
-    background: #1a1a2e;
-    border-bottom: 2px solid #16f4d0;
-    padding: 1rem 2rem;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 4px 12px rgba(22, 244, 208, 0.3);
-  }
-
-  nav .nav-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  nav a {
-    color: #16f4d0;
-    text-decoration: none;
-    margin-right: 1.5rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid transparent;
-    transition: all 0.2s;
-    font-weight: bold;
-    text-shadow: 0 0 5px rgba(22, 244, 208, 0.5);
-  }
-
-  nav a:hover {
-    border-color: #16f4d0;
-    background: rgba(22, 244, 208, 0.1);
-    box-shadow: 0 0 10px rgba(22, 244, 208, 0.4);
-  }
-
-  .nav-badge {
-    background: #16f4d0;
-    color: #0f0f23;
-    padding: 0.4rem 0.8rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    font-weight: bold;
-  }
-
   main {
     max-width: 1200px;
     margin: 2rem auto;
     padding: 0 2rem;
-  }
-
-  .demo-hint {
-    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%);
-    border: 2px solid #16f4d0;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    text-align: center;
-    box-shadow: 0 0 20px rgba(22, 244, 208, 0.3);
-  }
-
-  .demo-hint strong {
-    color: #16f4d0;
-    font-size: 1.2rem;
-    text-shadow: 0 0 10px rgba(22, 244, 208, 0.6);
-  }
-
-  .hint-flash {
-    display: inline-block;
-    color: #00d9ff;
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(0, 217, 255, 0.8); }
-    50% { opacity: 0.6; text-shadow: 0 0 5px rgba(0, 217, 255, 0.4); }
   }
 
   h1 {
@@ -446,22 +375,6 @@ style.textContent = `
     color: #999;
   }
 
-  a.back-link {
-    color: #16f4d0;
-    text-decoration: none;
-    display: inline-block;
-    margin-top: 2rem;
-    padding: 0.5rem 1rem;
-    border: 1px solid #16f4d0;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-
-  a.back-link:hover {
-    background: rgba(22, 244, 208, 0.1);
-    box-shadow: 0 0 10px rgba(22, 244, 208, 0.3);
-  }
-
   .section-header {
     display: flex;
     justify-content: space-between;
@@ -487,33 +400,32 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Layout component - PERSISTENT across page changes
+// Layout component
 function Layout(children) {
-  const nav = h('nav', {},
-    h('div', { class: 'nav-content' },
-      h('div', {},
-        h('a', { href: '/', 'data-swbk': '' }, '🔵 Home'),
-        h('a', { href: '/factorize', 'data-swbk': '' }, '⚡ Factorize'),
-        h('a', { href: '/about', 'data-swbk': '' }, 'ℹ️  About'),
-      ),
-      h('div', { class: 'nav-badge' }, 'TRUE CONCURRENCY')
+  const header = h('div', {
+    style: {
+      background: '#1a1a2e',
+      borderBottom: '2px solid #16f4d0',
+      padding: '1.5rem 2rem',
+      boxShadow: '0 4px 12px rgba(22, 244, 208, 0.3)',
+      textAlign: 'center'
+    }
+  },
+    h('h1', { style: { margin: 0, fontSize: '2rem' } },
+      '⚡ Go Concurrent Factorization',
+      h('span', { class: 'badge', style: { marginLeft: '1rem' } }, 'TRUE CONCURRENCY')
+    ),
+    h('p', { style: { margin: '0.5rem 0 0 0', color: '#00d9ff', fontSize: '0.95rem' } },
+      'Watch ', h('strong', {}, '4 goroutines'), ' process jobs in REAL parallel on multiple CPU cores'
     )
   );
 
-  const demoHint = h('div', { class: 'demo-hint' },
-    h('strong', {}, '🔵 Go + Switchback Demo:'),
-    ' Watch ',
-    h('span', { class: 'hint-flash' }, 'REAL PARALLEL PROCESSING'),
-    ' with goroutines across multiple CPU cores!'
-  );
-
   const main = h('main', {},
-    demoHint,
     children
   );
 
   const container = h('div', {});
-  container.appendChild(nav);
+  container.appendChild(header);
   container.appendChild(main);
   return container;
 }
@@ -774,52 +686,7 @@ async function refreshStatus() {
 
 // Page Components
 const pages = {
-  'Home': (props) => Layout(
-    h('div', {},
-      h('h1', {},
-        'Go Recipe',
-        h('span', { class: 'badge' }, '🔵 Go 1.21')
-      ),
-      h('div', { class: 'terminal-box' },
-        'A concurrent Go backend with ',
-        h('code', {}, 'goroutines'),
-        ' and ',
-        h('code', {}, 'channels'),
-        ' for TRUE parallel processing'
-      ),
-      h('div', { class: 'stats' },
-        h('div', { class: 'stat-card' },
-          h('strong', {}, props.stats.workers),
-          h('div', {}, 'Worker Goroutines')
-        ),
-        h('div', { class: 'stat-card' },
-          h('strong', {}, props.stats.activeJobs),
-          h('div', {}, 'Active Jobs')
-        ),
-        h('div', { class: 'stat-card' },
-          h('strong', {}, props.stats.completedJobs),
-          h('div', {}, 'Completed')
-        ),
-        h('div', { class: 'stat-card' },
-          h('strong', {}, props.stats.framework),
-          h('div', {}, 'Backend')
-        )
-      ),
-      h('div', { class: 'info-box' },
-        h('strong', {}, '⚡ What is True Concurrency?'),
-        h('p', { style: { marginTop: '0.5rem' } },
-          'Go\'s goroutines enable TRUE parallel processing on multiple CPU cores. ',
-          'Unlike JavaScript\'s single-threaded event loop, Go can run multiple ',
-          'CPU-bound tasks simultaneously. Watch the workers process factorizations in parallel!'
-        )
-      ),
-      h('div', { style: { marginTop: '2rem' } },
-        h('a', { href: '/factorize', 'data-swbk': '', class: 'btn' }, '⚡ Try Concurrent Factorization →')
-      )
-    )
-  ),
-
-  'Factorize': (props) => {
+  'Main': (props) => {
     // Initialize state
     state.workers = props.workers || [];
     state.jobs = props.jobs || [];
@@ -834,11 +701,24 @@ const pages = {
 
     return Layout(
       h('div', {},
-        h('h1', {}, '⚡ Concurrent Prime Factorization'),
-        h('div', { class: 'terminal-box' },
-          'Submit numbers to see ',
-          h('code', {}, '4 goroutines'),
-          ' process them in parallel. Watch the workers in real-time!'
+        // Stats overview
+        h('div', { class: 'stats' },
+          h('div', { class: 'stat-card' },
+            h('strong', {}, props.stats.workers),
+            h('div', {}, 'Worker Goroutines')
+          ),
+          h('div', { class: 'stat-card' },
+            h('strong', {}, props.stats.activeJobs),
+            h('div', {}, 'Active Jobs')
+          ),
+          h('div', { class: 'stat-card' },
+            h('strong', {}, props.stats.completedJobs),
+            h('div', {}, 'Completed')
+          ),
+          h('div', { class: 'stat-card' },
+            h('strong', {}, props.stats.totalProcessed),
+            h('div', {}, 'Total Processed')
+          )
         ),
 
         // Input section
@@ -900,105 +780,10 @@ const pages = {
             onClick: clearAllCompleted
           }, '🗑️ Clear All Completed')
         ),
-        h('div', { class: 'job-list', id: 'job-list' }),
-
-        h('a', { href: '/', 'data-swbk': '', class: 'back-link' }, '← Back to Home')
+        h('div', { class: 'job-list', id: 'job-list' })
       )
     );
   },
-
-  'About': (props) => Layout(
-    h('div', {},
-      h('h1', {}, 'ℹ️  About Switchback'),
-      h('div', { class: 'terminal-box' },
-        `Go Recipe v${props.version} - Powered by Switchback`
-      ),
-
-      h('h2', {}, '🎯 The Switchback Philosophy'),
-      h('div', { class: 'info-box' },
-        h('p', {},
-          'Switchback is an ',
-          h('strong', {}, 'auditable, vanilla TypeScript library'),
-          ' that unlocks the freedom to use ',
-          h('strong', {}, 'any backend stack'),
-          ' you want. No React. No complex framework. Just pure, readable TypeScript that you can understand completely.'
-        ),
-        h('p', { style: { marginTop: '1rem' } },
-          'This simplicity is ',
-          h('strong', {}, 'liberating'),
-          '. Because the client-side code is so straightforward, you can integrate with backends that bring unique capabilities - like Go\'s true concurrency, Rust\'s memory safety, or C\'s raw performance.'
-        )
-      ),
-
-      h('h2', {}, '🔵 Why This Recipe Uses Go'),
-      h('div', { class: 'info-box' },
-        h('p', {},
-          'This recipe showcases Go\'s ',
-          h('strong', {}, 'goroutines and channels'),
-          ' for parallel processing - something that highlights how Switchback doesn\'t lock you into Node.js patterns. The client-side remains clean vanilla TypeScript while the backend leverages Go\'s strengths.'
-        ),
-        h('p', { style: { marginTop: '1rem' } },
-          h('strong', {}, 'Key Features Demonstrated:')
-        ),
-        h('ul', { style: { marginTop: '0.5rem' } },
-          ...props.features.map(feature => h('li', {}, `${feature}`))
-        )
-      ),
-
-      h('h2', {}, '🌐 Other Backend Possibilities'),
-      h('div', { class: 'info-box' },
-        h('p', {},
-          'Because Switchback is just vanilla TypeScript on the client, you can easily integrate with:'
-        ),
-        h('ul', { style: { marginTop: '0.5rem' } },
-          h('li', {}, h('strong', {}, 'Go'), ' - True parallelism with goroutines (this recipe!)'),
-          h('li', {}, h('strong', {}, 'Rust'), ' - Memory safety and fearless concurrency'),
-          h('li', {}, h('strong', {}, 'C/C++'), ' - Maximum performance for systems programming'),
-          h('li', {}, h('strong', {}, 'Zig'), ' - Modern systems language with compile-time execution'),
-          h('li', {}, h('strong', {}, 'PHP'), ' - Battle-tested web serving with decades of tooling'),
-          h('li', {}, h('strong', {}, 'Python'), ' - Rich ecosystem for ML/AI integration'),
-          h('li', {}, h('strong', {}, 'Ruby'), ' - Elegant web frameworks like Rails'),
-          h('li', {}, h('strong', {}, 'Elixir'), ' - Fault-tolerant distributed systems')
-        ),
-        h('p', { style: { marginTop: '1rem' } },
-          'The common thread? Switchback stays ',
-          h('strong', {}, 'simple and auditable'),
-          ', letting ',
-          h('em', {}, 'your backend'),
-          ' shine.'
-        )
-      ),
-
-      h('h2', {}, '📖 How This Recipe Works'),
-      h('div', { class: 'info-box' },
-        h('ol', { style: { marginLeft: '2rem' } },
-          h('li', {}, 'Client sends factorization request to Go backend'),
-          h('li', {}, 'Go adds job to buffered channel (queue)'),
-          h('li', {}, 'First available goroutine picks up the job'),
-          h('li', {}, 'Worker performs CPU-intensive computation in parallel'),
-          h('li', {}, 'Switchback client polls for updates every second'),
-          h('li', {}, 'UI updates reactively with worker status')
-        ),
-        h('p', { style: { marginTop: '1rem' } },
-          'The beauty? You can read and understand ',
-          h('strong', {}, 'every line'),
-          ' of both the client and server code. No magic, no hidden complexity.'
-        )
-      ),
-
-      h('a', { href: '/', 'data-swbk': '', class: 'back-link' }, '← Back to Home')
-    )
-  ),
-
-  'Error': (props) => Layout(
-    h('div', {},
-      h('h1', {}, '❌ Error'),
-      h('div', { class: 'terminal-box' },
-        `Error: ${props.message}`
-      ),
-      h('a', { href: '/', 'data-swbk': '', class: 'back-link' }, '← Back to Home')
-    )
-  ),
 };
 
 // Initialize Switchback
@@ -1049,4 +834,4 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-console.log('🔵 Go Recipe initialized with true concurrency!');
+console.log('⚡ Go Concurrent Factorization initialized!');

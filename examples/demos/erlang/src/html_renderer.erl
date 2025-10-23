@@ -46,7 +46,7 @@ render_home(Props, RenderCount) ->
     end,
 
     [
-        <<"<div>">>,
+        <<"<div data-page=\"main\">">>,
         render_nav(),
         <<"<main>">>,
         render_demo_hint(RenderCount),
@@ -90,7 +90,7 @@ render_article(Props, RenderCount) ->
     } = Article,
 
     [
-        <<"<div>">>,
+        <<"<div data-page=\"main\">">>,
         render_nav(),
         <<"<main>">>,
         render_demo_hint(RenderCount),
@@ -125,7 +125,7 @@ render_about(Props, RenderCount) ->
     #{version := Version, features := Features} = Props,
 
     [
-        <<"<div>">>,
+        <<"<div data-page=\"main\">">>,
         render_nav(),
         <<"<main>">>,
         render_demo_hint(RenderCount),
@@ -175,7 +175,7 @@ render_error(Props, RenderCount) ->
     #{message := Message} = Props,
 
     [
-        <<"<div>">>,
+        <<"<div data-page=\"main\">">>,
         render_nav(),
         <<"<main>">>,
         render_demo_hint(RenderCount),

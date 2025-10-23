@@ -32,25 +32,23 @@ function h(tag, props = {}, ...children) {
 
 // Layout component
 function Layout(children) {
-  const nav = h('nav', {},
+  const nav = h('nav', { title: 'This navigation persists across page changes - it never reloads' },
     h('div', { class: 'nav-content' },
       h('div', {},
         h('a', { href: '/', 'data-swbk': '' }, 'Home'),
         h('a', { href: '/users', 'data-swbk': '' }, 'Users'),
         h('a', { href: '/about', 'data-swbk': '' }, 'About'),
       ),
-      h('div', { class: 'nav-badge' }, '🔒 Persistent Layout')
+      h('div', {
+        class: 'nav-badge',
+        title: 'This layout stays in place while content below is swapped by Switchback'
+      }, '🔒 Persistent Layout')
     )
   );
 
-  const demoHint = h('div', { class: 'demo-hint' },
-    h('strong', {}, '👀 Watch this area:'),
-    ' Only the content below changes - the nav stays! ',
-    h('span', { class: 'hint-flash' }, '✨ No page reload')
-  );
-
-  const main = h('main', { class: 'swappable-content' },
-    demoHint,
+  const main = h('main', {
+    title: 'Only this content area changes when navigating - no full page reload'
+  },
     children
   );
 

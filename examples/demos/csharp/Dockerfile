@@ -1,28 +1,21 @@
-# JS builder stage
-FROM node:20-alpine AS js-builder
+# Stage 1: Deno builder for the frontend
+# Uses Deno + esbuild for fast, dependency-free bundling
+FROM docker.io/denoland/deno:2.1.4 AS deno-builder
 
 WORKDIR /build
-
-# Copy root package files for dependencies
-COPY package.json pnpm-lock.yaml ./
-
-# Install pnpm and root dependencies
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 # Copy Switchback source
 COPY src ./src
 COPY tsconfig.json ./
 
-# Copy demo files maintaining structure: examples/demos/csharp/
+# Copy demo app file
 COPY examples/demos/csharp/app.ts ./examples/demos/csharp/app.ts
-COPY examples/demos/csharp/vite.config.ts ./examples/demos/csharp/vite.config.ts
-COPY examples/demos/csharp/package.json ./examples/demos/csharp/package.json
-COPY examples/demos/csharp/.npmrc ./examples/demos/csharp/.npmrc
 
-# Build bundled app (includes Switchback)
+# Build with Deno (uses esbuild from npm via Deno's npm compatibility)
+# This is MUCH faster than npm install + vite build - no node_modules needed!
 WORKDIR /build/examples/demos/csharp
-RUN pnpm install --reporter=silent 2>&1 | grep -v "Ignored build scripts" || true
-RUN pnpm build
+RUN mkdir -p wwwroot/dist
+RUN deno run -A npm:esbuild app.ts --bundle --outfile=wwwroot/dist/app.js --format=esm --platform=browser
 
 # C# server builder stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS dotnet-builder
@@ -49,7 +42,7 @@ COPY --from=dotnet-builder /app/publish .
 
 # Copy built JS bundle to wwwroot
 RUN mkdir -p wwwroot/dist
-COPY --from=js-builder /build/examples/demos/csharp/wwwroot/dist/app.js ./wwwroot/dist/app.js
+COPY --from=deno-builder /build/examples/demos/csharp/wwwroot/dist/app.js ./wwwroot/dist/app.js
 
 # Expose port
 EXPOSE 8000

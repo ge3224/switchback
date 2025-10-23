@@ -110,20 +110,7 @@ else {
             background: #2c3e50;
             color: white;
             padding: 1rem 2rem;
-            border: 3px dashed #4CAF50;
             position: relative;
-        }
-        nav::before {
-            content: "🔒 PERSISTENT LAYOUT (Never Reloads)";
-            position: absolute;
-            top: -12px;
-            left: 10px;
-            background: #4CAF50;
-            color: white;
-            padding: 2px 8px;
-            font-size: 11px;
-            border-radius: 3px;
-            font-weight: bold;
         }
         .nav-content {
             display: flex;
@@ -136,6 +123,7 @@ else {
             border-radius: 4px;
             font-size: 0.875rem;
             border: 1px solid rgba(76, 175, 80, 0.5);
+            cursor: help;
         }
         nav a {
             color: white;
@@ -150,51 +138,6 @@ else {
             max-width: 900px;
             margin: 0 auto;
             padding: 2rem;
-        }
-        .swappable-content {
-            border: 3px dashed #FF9800;
-            padding: 2rem;
-            margin-top: 1rem;
-            position: relative;
-            background: white;
-            animation: swapIn 0.3s ease-out;
-        }
-        .swappable-content::before {
-            content: "🔄 DYNAMIC CONTENT (Swapped by Switchback)";
-            position: absolute;
-            top: -12px;
-            left: 10px;
-            background: #FF9800;
-            color: white;
-            padding: 2px 8px;
-            font-size: 11px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
-        @keyframes swapIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .demo-hint {
-            background: #E3F2FD;
-            border-left: 4px solid #2196F3;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border-radius: 4px;
-            font-size: 0.95rem;
-        }
-        .hint-flash {
-            background: #FFF9C4;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-weight: bold;
-            color: #F57C00;
         }
         h1 { color: #2c3e50; margin-bottom: 1rem; }
         .badge {

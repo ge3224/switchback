@@ -127,7 +127,6 @@ render_html(PageData) ->
     Json = jsx:encode(PageData),
     % Escape JSON for safe insertion in script tag (prevent </script> breakout)
     SafeJson = binary:replace(Json, <<"</">>, <<"<\\/">>, [global]),
-    Html = maps:get(html, PageData, <<"<p>Loading...</p>">>),
 
     [
         <<"<!DOCTYPE html>\n">>,
@@ -141,7 +140,9 @@ render_html(PageData) ->
         <<"</head>\n">>,
         <<"<body>\n">>,
         <<"    <div data-swbk-app>\n">>,
-        Html,
+        <<"        <div data-page=\"main\" style=\"padding: 2rem; text-align: center; background: #1a0b2e; color: #b794f6;\">\n">>,
+        <<"            <p>Loading Erlang Blog...</p>\n">>,
+        <<"        </div>\n">>,
         <<"    </div>\n">>,
         <<"    <script type=\"module\" src=\"/dist/app.js\"></script>\n">>,
         <<"</body>\n">>,

@@ -176,73 +176,36 @@ func handlePageRoute(uri string) map[string]interface{} {
 	workersMutex.RLock()
 	defer workersMutex.RUnlock()
 
-	switch uri {
-	case "/":
-		activeJobs := 0
-		completedJobs := 0
-		for _, job := range jobs {
-			if job.Status == "completed" {
-				completedJobs++
-			} else {
-				activeJobs++
-			}
+	// Count job statistics
+	activeJobs := 0
+	completedJobs := 0
+	for _, job := range jobs {
+		if job.Status == "completed" {
+			completedJobs++
+		} else {
+			activeJobs++
 		}
+	}
 
-		return map[string]interface{}{
-			"component": "Home",
-			"props": map[string]interface{}{
-				"stats": map[string]interface{}{
-					"workers":       len(workers),
-					"activeJobs":    activeJobs,
-					"completedJobs": completedJobs,
-					"framework":     "Go 1.21",
-				},
+	// Get all jobs as slice
+	jobList := make([]*Job, 0, len(jobs))
+	for _, job := range jobs {
+		jobList = append(jobList, job)
+	}
+
+	return map[string]interface{}{
+		"component": "Main",
+		"props": map[string]interface{}{
+			"stats": map[string]interface{}{
+				"workers":        len(workers),
+				"activeJobs":     activeJobs,
+				"completedJobs":  completedJobs,
+				"totalProcessed": totalJobs,
 			},
-			"url": "/",
-		}
-
-	case "/factorize":
-		// Get all jobs as slice
-		jobList := make([]*Job, 0, len(jobs))
-		for _, job := range jobs {
-			jobList = append(jobList, job)
-		}
-
-		return map[string]interface{}{
-			"component": "Factorize",
-			"props": map[string]interface{}{
-				"workers": workers,
-				"jobs":    jobList,
-			},
-			"url": "/factorize",
-		}
-
-	case "/about":
-		return map[string]interface{}{
-			"component": "About",
-			"props": map[string]interface{}{
-				"version": "1.0.0",
-				"backend": "Go 1.21",
-				"features": []string{
-					"True parallel processing with goroutines",
-					"Concurrent worker pool (4 goroutines)",
-					"Channel-based job queue",
-					"Real-time prime factorization",
-					"CPU-bound work (not just async I/O)",
-					"Impossible with JavaScript single-threaded model",
-				},
-			},
-			"url": "/about",
-		}
-
-	default:
-		return map[string]interface{}{
-			"component": "Error",
-			"props": map[string]interface{}{
-				"message": "Page not found",
-			},
-			"url": uri,
-		}
+			"workers": workers,
+			"jobs":    jobList,
+		},
+		"url": "/",
 	}
 }
 
@@ -418,7 +381,6 @@ func main() {
 	}
 
 	log.Printf("🔵 Go server listening on http://0.0.0.0:%d", PORT)
-	log.Printf("   Try concurrent factorization at /factorize!")
 	log.Printf("   %d worker goroutines ready for TRUE parallel processing", len(workers))
 
 	// Setup graceful shutdown
