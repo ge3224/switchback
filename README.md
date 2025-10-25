@@ -5,33 +5,28 @@
 [![GitHub License](https://img.shields.io/github/license/ge3224/switchback)](https://github.com/ge3224/switchback/blob/main/LICENSE)
 [![CI](https://github.com/ge3224/switchback/actions/workflows/ci.yml/badge.svg)](https://github.com/ge3224/switchback/actions/workflows/ci.yml)
 
-Build Single-Page Apps that integrate with your preferred server stack. Build in vanilla TypeScript—no framework adoption, zero dependencies.
+Build Single Page Applications[^1] around your server stack. Build in **vanilla TypeScript**, no framework lock-in, no supply-chain vulnerabilities.
 
-Switchback is ~300 lines that handle link interception, form handling, and DOM updates. Read the source code in one sitting. Vendor it into your project, modify it as needed.
+Switchback is ~300 lines meant to be vendored[^2]. Audit the codebase before you finish your first cup of coffee, customize it, happy trails.
 
 ## Examples
 
-Here are full-stack demos in different languages. Docker keeps them isolated for convenient experimentation. See [examples/demos/](examples/demos/).
+Here are some pairings you can spin up in a container to try out.
 
-- **C** - Optimistic updates for instant UX
-- **C#** - Data visualization with LINQ query composition
-- **Deno** - TypeScript type sharing between client and server
-- **Erlang** - Server-side rendering with HTML morphing and stateful backend
-- **Go** - Concurrent worker pools with true parallelism
-- **OCaml** - Workflow states with compiler-enforced safety
-- **PHP** - Server-side routing with SPA navigation
-- **Rust** - Image processing pipeline with partial reloads and upload progress tracking
-- **Zig** - Form handling with POST requests and server-side state
-- **Assembly** - x86-64 assembly (because why not?)
-
-## Philosophy
-
-- **No client-side routing** - Your server owns the routes
-- **No API needed** - Just return page data from controllers
-- **Proven patterns** - Build with controllers and views
-- **Framework agnostic** - Works with any backend
+* [**Zig**](examples/demos/zig/README.md) - Backend owns form routing and state, frontend delivers app-like UX
+* [**Erlang**](examples/demos/erlang/README.md) - Server-side rendering with HTML morphing and stateful back-end
+* [**Go**](examples/demos/go/README.md) - Real-time visualization of a concurrent worker pool processing CPU-intensive tasks
+* [**Rust**](examples/demos/rust/README.md) - Track bulk photos as they're swiftly processed in parallel
+* [**OCaml**](examples/demos/ocaml/README.md) - Workflow states with compiler-enforced safety
+* [**C**](examples/demos/c/README.md) - Pure C99 multi-threaded server with optimistic updates
+* [**C#**](examples/demos/csharp/README.md) - ASP.NET minimal APIs with typed data contracts
+* [**Deno**](examples/demos/deno/README.md) - Modern TypeScript runtime with type sharing between server and client
+* [**PHP**](examples/demos/php/README.md) - Persistent navigation with backend-controlled routing in vanilla PHP
+* [**Assembly**](examples/demos/asm/README.md) - x86-64 assembly (because why not?)
 
 ## Features
+
+Your server owns routing and returns JSON for async requests, HTML for initial page loads. The client intercepts navigation and renders components. 
 
 - Link interception (make `<a>` tags async)
 - Form interception (make forms async)
@@ -44,241 +39,135 @@ Here are full-stack demos in different languages. Docker keeps them isolated for
 
 ## Installation
 
-### Browser-ready bundle (no build step)
+**Pre-built bundles** (no build step required):
 
-Download the latest release:
+Download ESM or UMD from [releases](https://github.com/ge3224/switchback/releases)
 
 ```html
-<!-- ESM -->
 <script type="module">
   import { newSwitchback } from './switchback.esm.js';
-  // ...
-</script>
-
-<!-- Or UMD -->
-<script src="./switchback.umd.js"></script>
-<script>
-  const { newSwitchback } = Switchback;
-  // ...
 </script>
 ```
 
-Get bundles from [releases](https://github.com/ge3224/switchback/releases).
+TypeScript source:
 
-### Via git submodule (for TypeScript projects)
+Download source from [releases](https://github.com/ge3224/switchback/releases) and import directly
+
+Vendor with git:
 
 ```bash
 git submodule add https://github.com/ge3224/switchback vendor/switchback
 ```
 
-Then import from `vendor/switchback`.
-
 ## Usage
 
-### Client Setup
+Switchback coordinates between your server and client. The server detects async requests and returns JSON. The client intercepts links/forms and handles navigation.
+
+### Server Side
+
+```rust
+// Rust example using Axum web framework
+// Check for X-Switchback header
+let is_switchback = req.headers().get("X-Switchback").is_some();
+
+// Build page response
+let page = json!({
+    "component": "Home",
+    "props": {
+        "stats": {
+            "users": user_count
+        }
+    },
+    "url": "/"
+});
+
+// Return JSON for Switchback, HTML otherwise
+if is_switchback {
+    Json(page).into_response()
+} else {
+    Html(render_html(&page)).into_response()
+}
+```
+
+This pattern can be implemented easily in your favorite language. Check the [demos](examples/demos/README.md) for examples in Go, Rust, C, OCaml, Erlang, and more.
+
+### Client Side
+
+Define your page components and initialize Switchback:
 
 ```typescript
-import { newSwitchback } from './vendor/switchback';
+import { newSwitchback } from 'switchback';
 
-// Your page components
+// Simple DOM helper
+function h(tag, props, ...children) {
+  const el = document.createElement(tag);
+  Object.assign(el, props);
+  children.flat().forEach(child => {
+    el.appendChild(
+      typeof child === 'string'
+        ? document.createTextNode(child)
+        : child
+    );
+  });
+  return el;
+}
+
+// Define page components
 const pages = {
-  'Home': (props) => {
-    const div = document.createElement('div');
-    div.innerHTML = `<h1>${props.title}</h1>`;
-    return div;
-  },
+  'Home': (props) => h('div', {},
+    h('h1', {}, 'Form Demo'),
+    h('p', {}, `Submissions: ${props.stats.submissions}`)
+  ),
+
+  'Success': (props) => h('div', {},
+    h('h1', {}, 'Success!'),
+    h('p', {}, `Submitted: ${props.submitted.name}`)
+  ),
 };
 
 // Initialize
 newSwitchback({
   resolve: (name) => pages[name],
+
   setup: ({ el, App, props }) => {
     el.innerHTML = '';
     el.appendChild(App(props));
   },
+
   initialPage: window.initialPage,
 });
 ```
 
-### HTML Setup
+### Mark Elements for Async Navigation
+
+Add `data-swbk` to links and forms:
 
 ```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>My App</title>
-  <script>
-    window.initialPage = <?= json_encode($page) ?>;
-  </script>
-</head>
-<body>
-  <div data-swbk-app></div>
-  <script type="module" src="/app.js"></script>
-</body>
-</html>
+<!-- Links navigate without page reload -->
+<a href="/users" data-swbk>View Users</a>
+
+<!-- Forms submit asynchronously -->
+<form action="/" method="post" data-swbk>
+  <input name="name" type="text" required>
+  <input name="email" type="email" required>
+  <button type="submit">Submit</button>
+</form>
 ```
 
-### Server Setup
+That's it. Your server returns JSON for `X-Switchback` requests, your client renders components, and Switchback handles the rest.
 
-Your server returns JSON when the `X-Switchback` header is present:
-
-**Java/Spring Boot example:**
-
-```java
-@GetMapping("/users/{id}")
-public ResponseEntity<?> showUser(@PathVariable String id,
-                                   @RequestHeader(value = "X-Switchback", required = false) String switchback) {
-    User user = userService.findById(id);
-
-    Map<String, Object> page = Map.of(
-        "component", "Users/Show",
-        "props", Map.of("user", user),
-        "url", "/users/" + id
-    );
-
-    if (switchback != null) {
-        return ResponseEntity.ok(page);  // Return JSON
-    }
-
-    return ResponseEntity.ok(renderHtml(page));  // Return HTML wrapper
-}
-```
-
-### Component Examples
-
-Add `data-swbk` to links and forms you want intercepted:
-
-```typescript
-// Intercepted link
-const link = document.createElement('a');
-link.href = '/users/123';
-link.setAttribute('data-swbk', '');
-link.textContent = 'View User';
-
-// Intercepted form
-const form = document.createElement('form');
-form.action = '/users/123';
-form.method = 'post';
-form.setAttribute('data-swbk', '');
-
-// Regular link (not intercepted)
-const external = document.createElement('a');
-external.href = 'https://example.com';
-external.textContent = 'External Site';
-```
-
-## API
-
-### `newSwitchback(config)`
-
-Initialize the Switchback app.
-
-```typescript
-const app = newSwitchback({
-  resolve: (name: string) => Promise<Component> | Component,
-  setup: ({ el, App, props }) => void,
-  initialPage?: Page,
-  progress?: {
-    delay?: number,
-    color?: string,
-    includeCSS?: boolean,
-    showSpinner?: boolean,
-  }
-});
-```
-
-### `visit(url, options)`
-
-Programmatic navigation.
-
-```typescript
-visit('/users/123', {
-  method: 'get',                    // HTTP method
-  data: { name: 'John' },           // Request data
-  headers: {},                      // Additional headers
-  replace: false,                   // Replace history entry
-  preserveScroll: false,            // Keep scroll position
-  preserveState: false,             // Merge with current state
-  only: ['user'],                   // Partial reload (only fetch these props)
-  useXhr: false,                    // Use XHR for progress tracking
-
-  // Lifecycle callbacks
-  onStart: () => {},
-  onProgress: (e: ProgressEvent) => {},
-  onSuccess: (page) => {},
-  onError: (errors) => {},
-  onFinish: () => {},
-});
-```
-
-### `page()`
-
-Get current page data.
-
-```typescript
-const currentPage = page();
-console.log(currentPage.component, currentPage.props, currentPage.url);
-```
-
-### `reload(options)`
-
-Reload current page.
-
-```typescript
-reload({ only: ['user'] }); // Partial reload
-```
-
-## Advanced Features
-
-### Progress Indicator
-
-Use XHR for download progress tracking:
-
-```typescript
-visit('/large-data', {
-  useXhr: true,
-  onProgress: (e) => {
-    if (e.lengthComputable) {
-      const percent = (e.loaded / e.total) * 100;
-      console.log(`${percent}% loaded`);
-    }
-  }
-});
-```
-
-### Partial Reloads
-
-Only refresh specific props:
-
-```typescript
-visit('/users/123', {
-  only: ['user'], // Only refresh 'user' prop, keep others
-});
-```
-
-### Scroll Management
-
-```typescript
-// Preserve scroll on navigation
-visit('/page', { preserveScroll: true });
-
-// Use data attributes
-const link = document.createElement('a');
-link.href = '/page';
-link.setAttribute('data-preserve-scroll', '');
-link.textContent = 'Link';
-```
+See the [demos](examples/demos/README.md) for complete working examples.
 
 ## Inspiration
 
-Switchback draws inspiration from [Inertia.js](https://inertiajs.com) but is designed specifically for vanilla TypeScript projects. Key differences:
-
-- **No framework dependency** - Works with vanilla DOM or any rendering approach
-- **Minimal** - ~300 lines you can audit vs thousands
-- **Vendorable** - Git submodule, direct copy, or browser bundle
-- **No adapters** - Just check a header and return JSON
-- **Optional SSR** - Backend can send HTML directly, no Node.js process required
+Switchback draws from [Inertia.js](https://inertiajs.com/) philosophy while staying framework-independent and highly auditable.
 
 ## License
 
 MIT
+
+---
+
+[^1]: A Single Page Application (SPA) is a web app that loads once and then updates content dynamically without refreshing the entire page.
+
+[^2]: In software development, _vendoring_ means making your own copy of a third-party dependency that your project uses. For example, see [Rust's `cargo vendor` command](https://doc.rust-lang.org/cargo/commands/cargo-vendor.html). With only ~300 lines and zero dependencies, Switchback is designed to be copied, audited, and customized for your specific needs.
