@@ -5,9 +5,9 @@
 [![GitHub License](https://img.shields.io/github/license/ge3224/switchback)](https://github.com/ge3224/switchback/blob/main/LICENSE)
 [![CI](https://github.com/ge3224/switchback/actions/workflows/ci.yml/badge.svg)](https://github.com/ge3224/switchback/actions/workflows/ci.yml)
 
-Build Single Page Applications[^1] around your server stack. Build in **vanilla TypeScript**, no framework lock-in, no supply-chain vulnerabilities.
+Build Single Page Applications around your server stack. Build in **vanilla TypeScript**, no framework lock-in, no supply-chain vulnerabilities.
 
-Switchback is ~300 lines meant to be vendored[^2]. Audit the codebase before you finish your first cup of coffee, customize it, happy trails.
+Switchback is ~300 lines meant to be vendored. Audit the codebase before you finish your first cup of coffee, customize it, happy trails.
 
 ## Examples
 
@@ -165,9 +165,3 @@ Switchback draws from [Inertia.js](https://inertiajs.com/) philosophy while stay
 ## License
 
 MIT
-
----
-
-[^1]: A Single Page Application (SPA) is a web app that loads once and then updates content dynamically without refreshing the entire page.
-
-[^2]: In software development, _vendoring_ means making your own copy of a third-party dependency that your project uses. For example, see [Rust's `cargo vendor` command](https://doc.rust-lang.org/cargo/commands/cargo-vendor.html).
