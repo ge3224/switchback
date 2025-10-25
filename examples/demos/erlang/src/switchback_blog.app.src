@@ -1,8 +1,8 @@
-{application, switchback_chat, [
-    {description, "Switchback Chat - Erlang/OTP Recipe"},
+{application, switchback_blog, [
+    {description, "Switchback Blog - Erlang/OTP SSR Demo"},
     {vsn, "1.0.0"},
-    {registered, [chat_room]},
-    {mod, {switchback_chat_app, []}},
+    {registered, [article_manager]},
+    {mod, {switchback_blog_app, []}},
     {applications, [
         kernel,
         stdlib,

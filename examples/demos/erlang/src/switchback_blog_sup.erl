@@ -1,3 +1,4 @@
+%% -*- coding: utf-8 -*-
 %%%-------------------------------------------------------------------
 %%% @doc
 %%% OTP Supervisor - Demonstrates fault tolerance
@@ -5,7 +6,7 @@
 %%% "Let it crash" philosophy in action!
 %%% @end
 %%%-------------------------------------------------------------------
--module(switchback_chat_sup).
+-module(switchback_blog_sup).
 -behaviour(supervisor).
 
 -export([start_link/0, init/1]).

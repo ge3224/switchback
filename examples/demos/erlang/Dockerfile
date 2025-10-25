@@ -24,6 +24,10 @@ FROM docker.io/library/erlang:26-alpine AS erlang-builder
 
 WORKDIR /app
 
+# Set UTF-8 locale for build stage
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
 # Install rebar3
 RUN apk add --no-cache git && \
     wget https://s3.amazonaws.com/rebar3/rebar3 && \
@@ -42,6 +46,10 @@ RUN rebar3 compile
 FROM docker.io/library/erlang:26-alpine
 
 WORKDIR /app
+
+# Set UTF-8 locale
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
 # Install runtime dependencies
 RUN apk add --no-cache bash
@@ -63,4 +71,4 @@ RUN apk add --no-cache git && \
 EXPOSE 8000
 
 # Start the Erlang application
-CMD ["rebar3", "shell", "--apps", "switchback_chat"]
+CMD ["rebar3", "shell", "--apps", "switchback_blog"]

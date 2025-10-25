@@ -16,9 +16,9 @@ This is similar to **Phoenix LiveView** or **HTMX**, but without WebSocket overh
 
 ## What's Included
 
-- **src/switchback_chat.erl** - Main application entry point
+- **src/switchback_blog_app.erl** - OTP application entry point
+- **src/switchback_blog_sup.erl** - OTP supervisor for fault tolerance
 - **src/article_manager.erl** - Article manager using gen_server (Actor Model)
-- **src/switchback_chat_sup.erl** - OTP supervisor for fault tolerance
 - **src/html_renderer.erl** - Server-side HTML rendering module
 - **src/page_handler.erl** - Returns HTML fragments for Switchback morphing
 - **src/static_handler.erl** - Serves static files (JavaScript bundle)
@@ -153,7 +153,7 @@ The beauty: Server renders complete HTML, Switchback morphs it seamlessly, and g
 ### Supervision Tree
 
 ```
-switchback_chat_sup (supervisor)
+switchback_blog_sup (supervisor)
     └── article_manager (gen_server)
             ├── Manages article data
             ├── Tracks view counts
@@ -229,7 +229,7 @@ render_page(<<"Home">>, Props, RenderCount) ->
 **Supervision (fault tolerance):**
 
 ```erlang
-% In switchback_chat_sup.erl
+% In switchback_blog_sup.erl
 init([]) ->
     ChildSpecs = [
         #{
@@ -261,15 +261,12 @@ init([]) ->
 ```
 erlang/
 ├── src/
-│   ├── switchback_chat.erl        # Main application entry point
-│   ├── switchback_chat_app.erl    # OTP application callback
-│   ├── switchback_chat_sup.erl    # OTP supervisor
+│   ├── switchback_blog_app.erl    # OTP application entry point
+│   ├── switchback_blog_sup.erl    # OTP supervisor
 │   ├── article_manager.erl        # Article manager gen_server
 │   ├── html_renderer.erl          # Server-side HTML rendering
 │   ├── page_handler.erl           # Switchback page routing
-│   ├── static_handler.erl         # Static file serving
-│   ├── stats_handler.erl          # Stats API endpoint
-│   └── users_handler.erl          # Users API endpoint
+│   └── static_handler.erl         # Static file serving
 ├── app.ts                          # Frontend Switchback app
 ├── vite.config.ts                  # Vite bundler config
 ├── package.json                    # Build scripts
@@ -288,7 +285,7 @@ OTP (Open Telecom Platform) provides battle-tested patterns for building reliabl
 A `gen_server` is a standardized server process:
 
 ```erlang
--module(chat_room).
+-module(article_manager).
 -behaviour(gen_server).
 
 % Callbacks you implement:
