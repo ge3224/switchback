@@ -170,4 +170,4 @@ MIT
 
 [^1]: A Single Page Application (SPA) is a web app that loads once and then updates content dynamically without refreshing the entire page.
 
-[^2]: In software development, _vendoring_ means making your own copy of a third-party dependency that your project uses. For example, see [Rust's `cargo vendor` command](https://doc.rust-lang.org/cargo/commands/cargo-vendor.html). With only ~300 lines and zero dependencies, Switchback is designed to be copied, audited, and customized for your specific needs.
+[^2]: In software development, _vendoring_ means making your own copy of a third-party dependency that your project uses. For example, see [Rust's `cargo vendor` command](https://doc.rust-lang.org/cargo/commands/cargo-vendor.html).
