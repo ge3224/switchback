@@ -13,16 +13,16 @@ Switchback is ~300 lines meant to be vendored[^2]. Audit the codebase before you
 
 Here are some pairings you can spin up in a container to try out.
 
-* [**Zig**](examples/demos/zig/README.md) - Backend owns form routing and state, frontend delivers app-like UX
-* [**Erlang**](examples/demos/erlang/README.md) - Server-side rendering with HTML morphing and stateful back-end
-* [**Go**](examples/demos/go/README.md) - Real-time visualization of a concurrent worker pool processing CPU-intensive tasks
-* [**Rust**](examples/demos/rust/README.md) - Track bulk photos as they're swiftly processed in parallel
-* [**OCaml**](examples/demos/ocaml/README.md) - Workflow states with compiler-enforced safety
-* [**C**](examples/demos/c/README.md) - Pure C99 multi-threaded server with optimistic updates
-* [**C#**](examples/demos/csharp/README.md) - ASP.NET minimal APIs with typed data contracts
-* [**Deno**](examples/demos/deno/README.md) - Modern TypeScript runtime with type sharing between server and client
-* [**PHP**](examples/demos/php/README.md) - Persistent navigation with backend-controlled routing in vanilla PHP
-* [**Assembly**](examples/demos/asm/README.md) - x86-64 assembly (because why not?)
+* [**Zig**](examples/demos/zig/) - Backend owns form routing and state, frontend delivers app-like UX
+* [**Erlang**](examples/demos/erlang/) - Server-side rendering with HTML morphing and stateful back-end
+* [**Go**](examples/demos/go/) - Real-time visualization of a concurrent worker pool processing CPU-intensive tasks
+* [**Rust**](examples/demos/rust/) - Track bulk photos as they're swiftly processed in parallel
+* [**OCaml**](examples/demos/ocaml/) - Workflow states with compiler-enforced safety
+* [**C**](examples/demos/c/) - Pure C99 multi-threaded server with optimistic updates
+* [**C#**](examples/demos/csharp/) - ASP.NET minimal APIs with typed data contracts
+* [**Deno**](examples/demos/deno/) - Modern TypeScript runtime with type sharing between server and client
+* [**PHP**](examples/demos/php/) - Persistent navigation with backend-controlled routing in vanilla PHP
+* [**Assembly**](examples/demos/asm/) - x86-64 assembly (because why not?)
 
 ## Features
 
@@ -89,7 +89,7 @@ if is_switchback {
 }
 ```
 
-This pattern can be implemented easily in your favorite language. Check the [demos](examples/demos/README.md) for examples in Go, Rust, C, OCaml, Erlang, and more.
+This pattern can be implemented easily in your favorite language. Check the [demos](examples/demos/) for examples in Go, Rust, C, OCaml, Erlang, and more.
 
 ### Client Side
 
@@ -156,7 +156,7 @@ Add `data-swbk` to links and forms:
 
 That's it. Your server returns JSON for `X-Switchback` requests, your client renders components, and Switchback handles the rest.
 
-See the [demos](examples/demos/README.md) for complete working examples.
+See the [demos](examples/demos/) for complete working examples.
 
 ## Inspiration
 
